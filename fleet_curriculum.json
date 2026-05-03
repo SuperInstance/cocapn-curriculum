@@ -1,0 +1,137 @@
+{
+  "levels": [
+    "Recruit",
+    "Sailor",
+    "Officer",
+    "Captain",
+    "Admiral"
+  ],
+  "xp_thresholds": {
+    "Recruit": 0,
+    "Sailor": 1000,
+    "Officer": 5000,
+    "Captain": 20000,
+    "Admiral": 100000
+  },
+  "competencies": {
+    "http_curl": {
+      "id": "http_curl",
+      "name": "Make HTTP requests with curl",
+      "description": "",
+      "level": "Recruit",
+      "requires": [],
+      "estimated_xp": 100,
+      "quests": [
+        "Probe one service"
+      ],
+      "completion_rate": 0.0
+    },
+    "plato_submit": {
+      "id": "plato_submit",
+      "name": "Submit tiles to PLATO gate",
+      "description": "",
+      "level": "Recruit",
+      "requires": [
+        "http_curl"
+      ],
+      "estimated_xp": 300,
+      "quests": [
+        "Submit first tile"
+      ],
+      "completion_rate": 0.0
+    },
+    "mud_explore": {
+      "id": "mud_explore",
+      "name": "Navigate MUD rooms",
+      "description": "",
+      "level": "Sailor",
+      "requires": [
+        "http_curl",
+        "plato_submit"
+      ],
+      "estimated_xp": 500,
+      "quests": [
+        "Map 5 rooms",
+        "Find a hidden room"
+      ],
+      "completion_rate": 0.0
+    },
+    "repo_audit": {
+      "id": "repo_audit",
+      "name": "Audit GitHub repos",
+      "description": "",
+      "level": "Sailor",
+      "requires": [
+        "http_curl"
+      ],
+      "estimated_xp": 400,
+      "quests": [
+        "Fix dead links",
+        "Add .gitignore"
+      ],
+      "completion_rate": 0.0
+    },
+    "subagent_spawn": {
+      "id": "subagent_spawn",
+      "name": "Spawn and monitor subagents",
+      "description": "",
+      "level": "Officer",
+      "requires": [
+        "repo_audit",
+        "mud_explore"
+      ],
+      "estimated_xp": 800,
+      "quests": [
+        "Spawn 3 subagents",
+        "Harvest their results"
+      ],
+      "completion_rate": 0.0
+    },
+    "bottle_write": {
+      "id": "bottle_write",
+      "name": "Write fleet bottles",
+      "description": "",
+      "level": "Officer",
+      "requires": [
+        "plato_submit",
+        "repo_audit"
+      ],
+      "estimated_xp": 600,
+      "quests": [
+        "Drop bottle to Oracle1"
+      ],
+      "completion_rate": 0.0
+    },
+    "service_heal": {
+      "id": "service_heal",
+      "name": "Fix downed services",
+      "description": "",
+      "level": "Captain",
+      "requires": [
+        "subagent_spawn",
+        "bottle_write"
+      ],
+      "estimated_xp": 1200,
+      "quests": [
+        "Restart a service",
+        "Patch a bug"
+      ],
+      "completion_rate": 0.0
+    },
+    "fleet_orchestrate": {
+      "id": "fleet_orchestrate",
+      "name": "Orchestrate fleet-wide operations",
+      "description": "",
+      "level": "Admiral",
+      "requires": [
+        "service_heal"
+      ],
+      "estimated_xp": 2000,
+      "quests": [
+        "Coordinate 10+ agents",
+        "Design new curriculum"
+      ],
+      "completion_rate": 0.0
+    }
+  }
+}
