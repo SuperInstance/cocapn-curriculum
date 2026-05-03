@@ -1,0 +1,172 @@
+{
+  "levels": [
+    "Recruit",
+    "Sailor",
+    "Officer",
+    "Captain",
+    "Admiral"
+  ],
+  "xp_thresholds": {
+    "Recruit": 0,
+    "Sailor": 1000,
+    "Officer": 5000,
+    "Captain": 20000,
+    "Admiral": 100000
+  },
+  "competencies": {
+    "http_curl": {
+      "id": "http_curl",
+      "name": "Make HTTP requests with curl",
+      "description": "",
+      "level": "Recruit",
+      "requires": [],
+      "estimated_xp": 100,
+      "quests": [
+        "Probe one service"
+      ],
+      "completion_rate": 0.0,
+      "entry_point": 0,
+      "bytecode": "",
+      "region_size": 2048
+    },
+    "plato_submit": {
+      "id": "plato_submit",
+      "name": "Submit tiles to PLATO gate",
+      "description": "",
+      "level": "Recruit",
+      "requires": [
+        "http_curl"
+      ],
+      "estimated_xp": 300,
+      "quests": [
+        "Submit first tile"
+      ],
+      "completion_rate": 0.0,
+      "entry_point": 0,
+      "bytecode": "",
+      "region_size": 4096
+    },
+    "mud_explore": {
+      "id": "mud_explore",
+      "name": "Navigate MUD rooms",
+      "description": "",
+      "level": "Sailor",
+      "requires": [
+        "http_curl",
+        "plato_submit"
+      ],
+      "estimated_xp": 500,
+      "quests": [
+        "Map 5 rooms",
+        "Find a hidden room"
+      ],
+      "completion_rate": 0.0,
+      "entry_point": 0,
+      "bytecode": "",
+      "region_size": 8192
+    },
+    "repo_audit": {
+      "id": "repo_audit",
+      "name": "Audit GitHub repos",
+      "description": "",
+      "level": "Sailor",
+      "requires": [
+        "http_curl"
+      ],
+      "estimated_xp": 400,
+      "quests": [
+        "Fix dead links",
+        "Add .gitignore"
+      ],
+      "completion_rate": 0.0,
+      "entry_point": 0,
+      "bytecode": "",
+      "region_size": 4096
+    },
+    "subagent_spawn": {
+      "id": "subagent_spawn",
+      "name": "Spawn and monitor subagents",
+      "description": "",
+      "level": "Officer",
+      "requires": [
+        "repo_audit",
+        "mud_explore"
+      ],
+      "estimated_xp": 800,
+      "quests": [
+        "Spawn 3 subagents",
+        "Harvest their results"
+      ],
+      "completion_rate": 0.0,
+      "entry_point": 0,
+      "bytecode": "",
+      "region_size": 16384
+    },
+    "bottle_write": {
+      "id": "bottle_write",
+      "name": "Write fleet bottles",
+      "description": "",
+      "level": "Officer",
+      "requires": [
+        "plato_submit",
+        "repo_audit"
+      ],
+      "estimated_xp": 600,
+      "quests": [
+        "Drop bottle to Oracle1"
+      ],
+      "completion_rate": 0.0,
+      "entry_point": 0,
+      "bytecode": "",
+      "region_size": 4096
+    },
+    "service_heal": {
+      "id": "service_heal",
+      "name": "Fix downed services",
+      "description": "",
+      "level": "Captain",
+      "requires": [
+        "subagent_spawn",
+        "bottle_write"
+      ],
+      "estimated_xp": 1200,
+      "quests": [
+        "Restart a service",
+        "Patch a bug"
+      ],
+      "completion_rate": 0.0,
+      "entry_point": 0,
+      "bytecode": "",
+      "region_size": 8192
+    },
+    "fleet_orchestrate": {
+      "id": "fleet_orchestrate",
+      "name": "Orchestrate fleet-wide operations",
+      "description": "",
+      "level": "Admiral",
+      "requires": [
+        "service_heal"
+      ],
+      "estimated_xp": 2000,
+      "quests": [
+        "Coordinate 10+ agents",
+        "Design new curriculum"
+      ],
+      "completion_rate": 0.0,
+      "entry_point": 0,
+      "bytecode": "",
+      "region_size": 32768
+    }
+  },
+  "jump_table": {
+    "http_curl": 0,
+    "plato_submit": 28,
+    "mud_explore": 60,
+    "repo_audit": 96,
+    "subagent_spawn": 128,
+    "bottle_write": 164,
+    "service_heal": 200,
+    "fleet_orchestrate": 236
+  },
+  "global_bytecode": "740000003c0e0000370900004f00000060000000807f007601000028740000003c0e0000370900004f0000006000000080070000007f007601000028740100003c0ee803370900004f000000600000008007000000070000007f007602000028740100003c0ee803370900004f0000006000000080070000007f007602000028740200003c0e8813370900004f000000600000008007000000070000007f007603000028740200003c0e8813370900004f000000600000008007000000070000007f007603000028740300003c0e204e370900004f000000600000008007000000070000007f007604000028740400003c0ea086370900004f0000006000000080070000007f0028"
+}
