@@ -17,39 +17,40 @@
     "http_curl": {
       "id": "http_curl",
       "name": "Make HTTP requests with curl",
-      "description": "",
+      "description": "Probe fleet services using curl, interpret status codes, and parse JSON responses.",
       "level": "Recruit",
       "requires": [],
       "estimated_xp": 100,
       "quests": [
-        "Probe one service"
+        "Probe one service",
+        "Check three fleet endpoints"
       ],
       "completion_rate": 0.0
     },
     "plato_submit": {
       "id": "plato_submit",
       "name": "Submit tiles to PLATO gate",
-      "description": "",
+      "description": "Write and submit tiles to the PLATO knowledge system with proper formatting.",
       "level": "Recruit",
       "requires": [
         "http_curl"
       ],
-      "estimated_xp": 300,
+      "estimated_xp": 500,
       "quests": [
-        "Submit first tile"
+        "Submit first tile",
+        "Pass gate validation"
       ],
       "completion_rate": 0.0
     },
     "mud_explore": {
       "id": "mud_explore",
       "name": "Navigate MUD rooms",
-      "description": "",
-      "level": "Sailor",
+      "description": "Explore the Cocapn Fleet MUD, map rooms, find hidden exits, and document findings.",
+      "level": "Recruit",
       "requires": [
-        "http_curl",
-        "plato_submit"
+        "http_curl"
       ],
-      "estimated_xp": 500,
+      "estimated_xp": 300,
       "quests": [
         "Map 5 rooms",
         "Find a hidden room"
@@ -59,59 +60,95 @@
     "repo_audit": {
       "id": "repo_audit",
       "name": "Audit GitHub repos",
-      "description": "",
+      "description": "Clone, inspect, and fix fleet repositories — dead links, missing files, stale content.",
       "level": "Sailor",
       "requires": [
         "http_curl"
       ],
-      "estimated_xp": 400,
+      "estimated_xp": 1400,
       "quests": [
         "Fix dead links",
-        "Add .gitignore"
+        "Add .gitignore",
+        "Update README"
       ],
       "completion_rate": 0.0
     },
-    "subagent_spawn": {
-      "id": "subagent_spawn",
-      "name": "Spawn and monitor subagents",
-      "description": "",
-      "level": "Officer",
+    "guard_compilation": {
+      "id": "guard_compilation",
+      "name": "Write and compile GUARD constraints",
+      "description": "Write safety constraints in GUARD DSL, compile to FLUX-C bytecode, and verify execution.",
+      "level": "Sailor",
       "requires": [
-        "repo_audit",
-        "mud_explore"
+        "http_curl",
+        "plato_submit"
       ],
       "estimated_xp": 800,
       "quests": [
-        "Spawn 3 subagents",
-        "Harvest their results"
+        "Write a GUARD constraint",
+        "Compile to FLUX-C",
+        "Verify bytecode execution"
+      ],
+      "completion_rate": 0.0
+    },
+    "ci_deployment": {
+      "id": "ci_deployment",
+      "name": "Deploy CI workflows",
+      "description": "Write GitHub Actions workflows, configure branch protection, and debug failing CI.",
+      "level": "Sailor",
+      "requires": [
+        "http_curl",
+        "plato_submit"
+      ],
+      "estimated_xp": 600,
+      "quests": [
+        "Add CI to a repo",
+        "Configure branch protection",
+        "Debug a failing run"
       ],
       "completion_rate": 0.0
     },
     "bottle_write": {
       "id": "bottle_write",
       "name": "Write fleet bottles",
-      "description": "",
-      "level": "Officer",
+      "description": "Write structured I2I bottles in the fleet protocol and deliver to the correct recipient.",
+      "level": "Sailor",
       "requires": [
         "plato_submit",
-        "repo_audit"
+        "ci_deployment"
       ],
       "estimated_xp": 600,
       "quests": [
-        "Drop bottle to Oracle1"
+        "Drop bottle to Oracle1",
+        "Write an audit bottle"
+      ],
+      "completion_rate": 0.0
+    },
+    "subagent_spawn": {
+      "id": "subagent_spawn",
+      "name": "Spawn and monitor subagents",
+      "description": "Create subagents for specific tasks, track their progress, and harvest results.",
+      "level": "Officer",
+      "requires": [
+        "repo_audit",
+        "mud_explore"
+      ],
+      "estimated_xp": 1200,
+      "quests": [
+        "Spawn 3 subagents",
+        "Harvest their results"
       ],
       "completion_rate": 0.0
     },
     "service_heal": {
       "id": "service_heal",
       "name": "Fix downed services",
-      "description": "",
+      "description": "Diagnose and restart failed fleet services, patch bugs, and restore connectivity.",
       "level": "Captain",
       "requires": [
         "subagent_spawn",
         "bottle_write"
       ],
-      "estimated_xp": 1200,
+      "estimated_xp": 1400,
       "quests": [
         "Restart a service",
         "Patch a bug"
@@ -121,12 +158,12 @@
     "fleet_orchestrate": {
       "id": "fleet_orchestrate",
       "name": "Orchestrate fleet-wide operations",
-      "description": "",
+      "description": "Design and coordinate multi-agent operations across the entire fleet.",
       "level": "Admiral",
       "requires": [
         "service_heal"
       ],
-      "estimated_xp": 2000,
+      "estimated_xp": 3500,
       "quests": [
         "Coordinate 10+ agents",
         "Design new curriculum"

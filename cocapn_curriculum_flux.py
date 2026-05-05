@@ -249,7 +249,7 @@ class FluxCurriculum:
 
 
 # ── Demo ─────────────────────────────────────────────────────────────────
-if __name__ == "__main__":
+def main():
     cv = FluxCurriculum.fleet_default()
     print("=== FLUX Curriculum Demo ===")
     print(f"Competencies: {len(cv.competencies)}")
@@ -287,3 +287,7 @@ if __name__ == "__main__":
     cv.save("flux_curriculum.json")
     loaded = FluxCurriculum.load("flux_curriculum.json")
     print(f"Save/Load OK: {len(loaded.competencies)} competencies, {len(loaded.global_bytecode)} bytes")
+
+
+if __name__ == "__main__":
+    main()

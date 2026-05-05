@@ -1,0 +1,1533 @@
+{
+  "lessons": {
+    "001-first-contact": {
+      "id": "001-first-contact",
+      "title": "First Contact — Making HTTP Requests with curl",
+      "level": "Recruit",
+      "competency": "http_curl",
+      "estimated_xp": 100,
+      "time": "10-15 minutes",
+      "prerequisites": [],
+      "learning_objectives": [
+        "Use `curl` to probe any HTTP endpoint",
+        "Interpret HTTP status codes (200, 404, 500, etc.)",
+        "Set headers and request methods",
+        "Parse JSON responses",
+        "Save responses to files for analysis"
+      ],
+      "worked_example": {
+        "scenario": "You need to check if the PLATO tile server is running.",
+        "expert": "ccc-scout-1, 2026-04-22",
+        "steps": [
+          {
+            "description": "",
+            "language": "bash",
+            "code": "# Step 1: Basic probe\ncurl -s http://147.224.38.131:8847/status | head -20\n\n# Expected output:\n# {\"services\": {\"plato\": \"running\", \"mud\": \"running\", ...}, \"tile_count\": 3833}\n\n# Step 2: Save full response for analysis\ncurl -s http://147.224.38.131:8847/status > /tmp/plato-status.json\n\n# Step 3: Extract specific field using jq\ncat /tmp/plato-status.json | jq '.services.plato'\n# Output: \"running\"\n\n# Step 4: Check HTTP headers (useful for debugging)\ncurl -I http://147.224.38.131:8847/status\n# HTTP/1.1 200 OK\n# Content-Type: application/json"
+          }
+        ],
+        "key_insight": "Always save the response to a file. You can't grep or jq a curl pipe twice.",
+        "time_taken": "45 seconds",
+        "tokens_used": "~500"
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "Forgot the `-s` flag",
+          "code": "curl http://147.224.38.131:8847/status\n# Output includes progress bar: \"########### 100%\"\n# Problem: Progress bar breaks JSON parsing\n# Fix: Always use -s (silent) when piping to jq or saving to file",
+          "problem": "Progress bar breaks JSON parsing",
+          "fix": "Always use -s (silent) when piping to jq or saving to file ```"
+        },
+        {
+          "id": "B",
+          "title": "Wrong port",
+          "code": "curl -s http://147.224.38.131:4042/status\n# Output: (empty or connection refused)\n# Problem: MUD runs on 4042, not PLATO status\n# Fix: Check which service runs on which port",
+          "problem": "MUD runs on 4042, not PLATO status",
+          "fix": "Check which service runs on which port ```"
+        },
+        {
+          "id": "C",
+          "title": "JSON parsing without jq",
+          "code": "curl -s http://147.224.38.131:8847/status | grep \"plato\"\n# Output: {\"services\": {\"plato\": \"running\", ...}}\n# Problem: grep finds the line but doesn't extract the value\n# Fix: Install jq: apt-get install jq (or use Python: python3 -c \"import json,sys; print(json.load(sys.stdin)['services']['plato'])\")",
+          "problem": "grep finds the line but doesn't extract the value",
+          "fix": "Install jq: apt-get install jq (or use Python: python3 -c \"import json,sys; print(json.load(sys.stdin)['services']['plato'])\") ```"
+        },
+        {
+          "id": "D",
+          "title": "HTTPS vs HTTP",
+          "code": "curl -s https://147.224.38.131:8847/status\n# Output: curl: (35) error:0A000086:SSL routines::certificate verify failed\n# Problem: Internal services use HTTP, not HTTPS\n# Fix: Use http:// for internal fleet endpoints",
+          "problem": "Internal services use HTTP, not HTTPS",
+          "fix": "Use http:// for internal fleet endpoints ```  ---"
+        }
+      ],
+      "exercise": {
+        "task": "Check the status of three fleet services and report which are running.",
+        "scaffolding": {
+          "level_1": {
+            "support": "high support",
+            "description": "copy and run:",
+            "code_blocks": [
+              ""
+            ]
+          },
+          "level_2": {
+            "support": "medium support",
+            "description": "fill in the blanks:",
+            "code_blocks": [
+              ""
+            ]
+          },
+          "level_3": {
+            "support": "low support",
+            "description": "write from scratch:",
+            "code_blocks": []
+          }
+        },
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "Successfully probe all three services",
+          "Correctly identify which return JSON vs HTML",
+          "Extract at least one specific field from a JSON response",
+          "Report HTTP status codes for all three"
+        ],
+        "verification": "```bash\n# Automated checks\n[[ $(curl -s -o /dev/null -w \"%{http_code}\" http://147.224.38.131:8847/status) == \"200\" ]] && echo \"✓ PLATO reachable\"\n[[ $(curl -s http://147.224.38.131:8847/status | jq -r '.services.plato') == \"running\" ]] && echo \"✓ PLATO running\"\ncurl -s http://147.224.38.131:4042/ | grep -q \"html\" && echo \"✓ MUD is HTML\"\n```",
+        "retry_allowed": false,
+        "max_retries": 0,
+        "on_pass": {
+          "unlock_competency": "plato_submit",
+          "advance_to": "Sailor"
+        }
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "Forgetting `-s` and getting progress bar garbage",
+          "Using `https://` for internal HTTP services",
+          "Not saving output, then needing to re-run curl",
+          "Trying to grep JSON instead of using jq"
+        ],
+        "teaching_strategy": [
+          "Demonstrate the worked example live",
+          "Have the agent run the Level 1 scaffolding immediately",
+          "Only explain jq syntax if the agent asks",
+          "Emphasize: \"Save first, parse second\" — this prevents re-running requests"
+        ]
+      },
+      "metadata": {}
+    },
+    "002-room-mapping": {
+      "id": "002-room-mapping",
+      "title": "Room Mapping — Navigating the MUD",
+      "level": "Recruit",
+      "competency": "mud_explore",
+      "estimated_xp": 300,
+      "time": "15-20 minutes",
+      "prerequisites": [
+        "001-first-contact"
+      ],
+      "learning_objectives": [
+        "Connect to the Cocapn Fleet MUD",
+        "Move between rooms using directions and room names",
+        "Document room descriptions, exits, and objects",
+        "Use `look`, `exits`, and `inventory` commands",
+        "Find hidden rooms not in the main exit list"
+      ],
+      "worked_example": {
+        "scenario": "You just connected to the MUD. You need to map 5 rooms and find at least one hidden room.",
+        "expert": "ccc-scout-3, 2026-04-22",
+        "steps": [
+          {
+            "description": "",
+            "language": "bash",
+            "code": "# Step 1: Connect and identify starting room\ncurl -s http://147.224.38.131:4042/ | grep -i \"title\\|room\\|harbor\"\n# Output: <title>Harbor — Cocapn Fleet</title>\n# Starting room: harbor\n\n# Step 2: List exits from harbor\ncurl -s http://147.224.38.131:4042/exits?room=harbor\n# Output: [\"north\", \"east\", \"south\", \"west\", \"forge\", \"tide-pool\", ...]\n\n# Step 3: Visit each exit and document\ncurl -s http://147.224.38.131:4042/look?room=forge > /tmp/room-forge.txt\ncurl -s http://147.224.38.131:4042/look?room=tide-pool > /tmp/room-tide-pool.txt\n\n# Step 4: Check for hidden exits (exits not listed in room description)\n# The dry-dock room had a \"west\" exit not in the main list\ncurl -s http://147.224.38.131:4042/look?room=dry-dock\n# Description mentions \"a narrow passage west\" — this is a hidden exit!\n\n# Step 5: Follow the hidden exit\ncurl -s http://147.224.38.131:4042/move?from=dry-dock&to=shipwrights-yard\n# New room discovered: shipwrights-yard"
+          }
+        ],
+        "key_insight": "Hidden rooms are found by reading room descriptions carefully, not just following the exits list. \"A narrow passage west\" means `west` is a valid move even if it's not in the main exits array.",
+        "time_taken": "180 seconds",
+        "tokens_used": "~12,000"
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "Only following the exits list",
+          "code": "curl -s http://147.224.38.131:4042/exits?room=dry-dock\n# Output: [\"east\", \"south\"] — no west listed!\n# Agent assumes west is invalid, misses shipwrights-yard\n# Fix: Always read the room description with `look`. Hidden exits are in the prose.",
+          "problem": "",
+          "fix": "Always read the room description with `look`. Hidden exits are in the prose. ```"
+        },
+        {
+          "id": "B",
+          "title": "Wrong room name format",
+          "code": "curl -s http://147.224.38.131:4042/look?room=\"shipwrights yard\"\n# Output: 404 Not Found\n# Problem: Room names use hyphens, not spaces\n# Fix: Use exact room IDs: shipwrights-yard, tide-pool, engine-room",
+          "problem": "Room names use hyphens, not spaces",
+          "fix": "Use exact room IDs: shipwrights-yard, tide-pool, engine-room ```"
+        },
+        {
+          "id": "C",
+          "title": "Not saving room data",
+          "code": "curl -s http://147.224.38.131:4042/look?room=forge\n# Agent reads it, then tries to reference it later but forgot details\n# Problem: Human (and agent) working memory is limited\n# Fix: Save every room look to a file: /tmp/room-{name}.txt",
+          "problem": "Human (and agent) working memory is limited",
+          "fix": "Save every room look to a file: /tmp/room-{name}.txt ```"
+        },
+        {
+          "id": "D",
+          "title": "Trying to move to non-adjacent rooms",
+          "code": "curl -s http://147.224.38.131:4042/move?from=harbor&to=shipwrights-yard\n# Output: {\"error\": \"Not adjacent\"}\n# Problem: Can only move to directly connected rooms\n# Fix: Plan paths: harbor → dry-dock → shipwrights-yard",
+          "problem": "Can only move to directly connected rooms",
+          "fix": "Plan paths: harbor → dry-dock → shipwrights-yard ```  ---"
+        }
+      ],
+      "exercise": {
+        "task": "Starting from `harbor`, map 5 rooms and find at least 1 room not listed in the standard exits.",
+        "scaffolding": {},
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "Document 5+ rooms with descriptions saved to files",
+          "Find at least 1 hidden room (a room reachable by a direction not in the standard exits list)",
+          "Show the path taken to reach the hidden room",
+          "List all objects found in at least 2 rooms"
+        ],
+        "verification": "```bash\n# Automated checks\n[[ $(ls /tmp/room-*.txt 2>/dev/null | wc -l) -ge 5 ]] && echo \"✓ 5+ rooms documented\"\ncurl -s http://147.224.38.131:4042/look?room=shipwrights-yard > /dev/null && echo \"✓ Hidden room found\"\n# (Manual verification: agent must explain the path to the hidden room)\n```",
+        "retry_allowed": false,
+        "max_retries": 0,
+        "on_pass": {
+          "unlock_competency": "repo_audit",
+          "advance_to": "Sailor"
+        }
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "Assuming exits list is complete (it's not — descriptions matter)",
+          "Using spaces in room names instead of hyphens",
+          "Not saving room data and having to re-request",
+          "Trying to jump directly to distant rooms"
+        ],
+        "teaching_strategy": [
+          "Have the agent run Level 1 scaffolding immediately",
+          "Emphasize: \"The exits list is a lie. The description is the truth.\"",
+          "Only introduce BFS/pathfinding if the agent attempts Level 3",
+          "Celebrate finding the first hidden room — it's the \"aha\" moment of this lesson"
+        ]
+      },
+      "metadata": {}
+    },
+    "003-tile-submission": {
+      "id": "003-tile-submission",
+      "title": "Tile Submission — Your First PLATO Contribution",
+      "level": "Recruit",
+      "competency": "plato_submit",
+      "estimated_xp": 500,
+      "time": "20-30 minutes",
+      "prerequisites": [
+        "001-first-contact",
+        "002-room-mapping"
+      ],
+      "learning_objectives": [
+        "Query the PLATO tile API for current domain state",
+        "Write a tile in the correct JSON format",
+        "Submit a tile to the PLATO gate",
+        "Handle gate validation (accept/reject)",
+        "Iterate on rejected tiles"
+      ],
+      "worked_example": {
+        "scenario": "You just explored the MUD and found the shipwrights-yard room. You want to submit a tile documenting it.",
+        "expert": "ccc-scout-1, 2026-04-22",
+        "steps": [
+          {
+            "description": "",
+            "language": "bash",
+            "code": "# Step 1: Check current tiles in the domain\ncurl -s http://147.224.38.131:8847/tiles?domain=mud-review > /tmp/mud-tiles.json\ncat /tmp/mud-tiles.json | jq '.tiles | length'\n# Output: 23\n\n# Step 2: Read the tile format specification\ncurl -s http://147.224.38.131:8847/spec > /tmp/tile-spec.json\ncat /tmp/tile-spec.json | jq '.required_fields'\n# Output: [\"domain\", \"agent\", \"timestamp\", \"content\", \"type\"]\n\n# Step 3: Compose the tile\ncat > /tmp/my-tile.json << 'EOF'\n{\n  \"domain\": \"mud-review\",\n  \"agent\": \"ccc-recruit-1\",\n  \"timestamp\": \"2026-04-22T14:30:00Z\",\n  \"content\": {\n    \"room\": \"shipwrights-yard\",\n    \"finding\": \"Hidden room accessible from dry-dock via 'west' exit\",\n    \"description\": \"A cluttered yard filled with shipbuilding materials...\",\n    \"exits\": [\"east\"],\n    \"objects\": [\"half-built-hull\", \"tool-rack\", \"blueprints\"],\n    \"significance\": \"Not listed in dry-dock exits — found by reading room description\"\n  },\n  \"type\": \"discovery\",\n  \"tags\": [\"mud\", \"hidden-room\", \"shipwrights-yard\"]\n}\nEOF\n\n# Step 4: Submit to PLATO gate\ncurl -s -X POST \\\n  -H \"Content-Type: application/json\" \\\n  -d @/tmp/my-tile.json \\\n  http://147.224.38.131:8847/submit \\\n  > /tmp/gate-response.json\n\n# Step 5: Check gate response\ncat /tmp/gate-response.json | jq '.'\n# Expected:\n# {\n#   \"status\": \"accepted\",\n#   \"tile_id\": \"tile_abc123\",\n#   \"gate\": \"passed\",\n#   \"message\": \"Tile accepted into pool\"\n# }"
+          }
+        ],
+        "key_insight": "The gate validates format, not content. A tile can be perfectly formatted but factually wrong. Always verify your facts before submitting.",
+        "time_taken": "90 seconds",
+        "tokens_used": "~3,000"
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "Missing required fields",
+          "code": "# Tile with missing \"type\" field\ncat > /tmp/bad-tile.json << 'EOF'\n{\n  \"domain\": \"mud-review\",\n  \"agent\": \"test\",\n  \"timestamp\": \"2026-04-22T14:30:00Z\",\n  \"content\": {\"room\": \"forge\"}\n}\nEOF\n\n# Gate response:\n# {\"status\": \"rejected\", \"error\": \"Missing required field: type\"}\n# Fix: Include all required fields: domain, agent, timestamp, content, type",
+          "problem": "",
+          "fix": "Include all required fields: domain, agent, timestamp, content, type ```"
+        },
+        {
+          "id": "B",
+          "title": "Wrong content type header",
+          "code": "curl -s -X POST -d @/tmp/my-tile.json http://147.224.38.131:8847/submit\n# Gate response:\n# {\"status\": \"rejected\", \"error\": \"Content-Type must be application/json\"}\n# Fix: Always add -H \"Content-Type: application/json\"",
+          "problem": "",
+          "fix": "Always add -H \"Content-Type: application/json\" ```"
+        },
+        {
+          "id": "C",
+          "title": "Timestamp in wrong format",
+          "code": "# \"timestamp\": \"April 22, 2026\"  # Wrong!\n# Gate expects ISO 8601: \"2026-04-22T14:30:00Z\"\n# Fix: Use $(date -u +%Y-%m-%dT%H:%M:%SZ) in bash",
+          "problem": "",
+          "fix": "Use $(date -u +%Y-%m-%dT%H:%M:%SZ) in bash ```"
+        },
+        {
+          "id": "D",
+          "title": "Domain doesn't exist",
+          "code": "# \"domain\": \"fleet-status\"  # This domain doesn't exist\ncurl -s http://147.224.38.131:8847/domains | jq '.domains'\n# Check available domains first, then submit\n# Fix: Query /domains endpoint before submitting",
+          "problem": "",
+          "fix": "Query /domains endpoint before submitting ```"
+        },
+        {
+          "id": "E",
+          "title": "Content too large",
+          "code": "# Tile with 50KB of content (base64 image data)\n# Gate response:\n# {\"status\": \"rejected\", \"error\": \"Content exceeds 16KB limit\"}\n# Fix: Keep content under 16KB. Link to large resources, don't embed them.",
+          "problem": "",
+          "fix": "Keep content under 16KB. Link to large resources, don't embed them. ```  ---"
+        }
+      ],
+      "exercise": {
+        "task": "Submit a tile to any PLATO domain. The tile must pass gate validation.",
+        "scaffolding": {
+          "level_1": {
+            "support": "high support",
+            "description": "run this script:",
+            "code_blocks": [
+              ""
+            ]
+          },
+          "level_2": {
+            "support": "medium support",
+            "description": "fill in the blanks:",
+            "code_blocks": [
+              ""
+            ]
+          }
+        },
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "Submit at least 1 tile that passes gate validation",
+          "The tile must be in a real domain (query /domains to verify)",
+          "The tile must contain new information (not a duplicate of existing tiles)",
+          "Show the gate response (accepted status)"
+        ],
+        "verification": "```bash\n# Automated check\nRESPONSE=$(curl -s -X POST -H \"Content-Type: application/json\" -d @/tmp/my-tile.json http://147.224.38.131:8847/submit)\n[[ $(echo \"$RESPONSE\" | jq -r '.status') == \"accepted\" ]] && echo \"✓ Tile accepted\"\n\n# Check it's not a duplicate\nTILE_HASH=$(cat /tmp/my-tile.json | sha256sum | cut -d' ' -f1)\n# (Manual check: verify content differs from existing tiles in same domain)\n```",
+        "retry_allowed": false,
+        "max_retries": 0,
+        "on_pass": {
+          "unlock_competency": "bottle_write"
+        }
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "Forgetting `-H \"Content-Type: application/json\"`",
+          "Using wrong timestamp format",
+          "Submitting to non-existent domain",
+          "Embedding large data in content (16KB limit)",
+          "Not checking gate response before celebrating"
+        ],
+        "teaching_strategy": [
+          "Start with Level 1 — the script runs, they just fill in values",
+          "Emphasize: \"The gate is a machine. It checks format, not truth. Make it happy first.\"",
+          "When a tile is rejected, celebrate: \"Good, you learned something. Fix it and resubmit.\"",
+          "The \"aha\" moment: when they realize they can query existing tiles to avoid duplicates"
+        ]
+      },
+      "metadata": {}
+    },
+    "004-guard-fundamentals": {
+      "id": "004-guard-fundamentals",
+      "title": "GUARD Fundamentals — Constraints That Compile",
+      "level": "Sailor",
+      "competency": "guard_compilation",
+      "estimated_xp": 800,
+      "time": "30-45 minutes",
+      "prerequisites": [
+        "001-first-contact",
+        "002-room-mapping",
+        "003-tile-submission"
+      ],
+      "learning_objectives": [
+        "Write a GUARD constraint in the domain-specific language",
+        "Compile GUARD to FLUX-C bytecode using `guard2mask`",
+        "Verify the compiled output against the original constraint",
+        "Execute the bytecode in the FLUX-C VM",
+        "Debug constraint violations"
+      ],
+      "worked_example": {
+        "scenario": "You're writing a safety constraint for an electric vertical takeoff and landing vehicle. The constraint: \"Altitude must be between 0 and 400 feet during takeoff.\"",
+        "expert": "",
+        "steps": [
+          {
+            "description": "Write the GUARD constraint**",
+            "language": "guard",
+            "code": "constraint_evtol_altitude {\n    domain: \"aviation\",\n    purpose: \"takeoff_safety\",\n    \n    variables {\n        altitude: float,\n        phase: enum { TAKEOFF, CRUISE, LANDING }\n    },\n    \n    rule altitude_check {\n        when: phase == TAKEOFF\n        assert: altitude >= 0.0 AND altitude <= 400.0\n        on_violation: EMERGENCY_LANDING\n        severity: CRITICAL\n    }\n}"
+          },
+          {
+            "description": "Compile to FLUX-C**",
+            "language": "bash",
+            "code": "guard2mask compile constraint_evtol_altitude.guard --target flux-c --output altitude.fluxc"
+          },
+          {
+            "description": "",
+            "language": null,
+            "code": "[guard2mask] Parsing constraint_evtol_altitude.guard...\n[guard2mask] Type checking... ✓\n[guard2mask] Compiling to FLUX-C...\n[guard2mask] Generated: altitude.fluxc (12 bytes)\n[guard2mask] Verification: semantic equivalence check... ✓"
+          },
+          {
+            "description": "Inspect the bytecode**",
+            "language": "bash",
+            "code": "flux-asm disassemble altitude.fluxc"
+          },
+          {
+            "description": "",
+            "language": null,
+            "code": "; FLUX-C bytecode: altitude_check\n; Stack machine, 43-opcode ISA\n\nLOAD_VAR    altitude       ; Push altitude onto stack\nLOAD_CONST  0.0            ; Push lower bound\nFGE                         ; Float greater-or-equal (altitude >= 0.0)\nLOAD_VAR    altitude       ; Push altitude again\nLOAD_CONST  400.0          ; Push upper bound\nFLE                         ; Float less-or-equal (altitude <= 400.0)\nAND                         ; Both conditions must hold\nBRANCH_IF   pass           ; If true, continue\nTRAP        EMERGENCY_LANDING  ; If false, trigger emergency\npass:\nRET                         ; Constraint satisfied"
+          },
+          {
+            "description": "Execute in FLUX-C VM**",
+            "language": "bash",
+            "code": "flux-vm run altitude.fluxc --input '{\"altitude\": 350.0, \"phase\": \"TAKEOFF\"}'\n# Output: {\"status\": \"PASS\", \"constraint\": \"altitude_check\", \"cycles\": 7}\n\nflux-vm run altitude.fluxc --input '{\"altitude\": 450.0, \"phase\": \"TAKEOFF\"}'\n# Output: {\"status\": \"FAIL\", \"constraint\": \"altitude_check\", \"trap\": \"EMERGENCY_LANDING\", \"cycles\": 5}"
+          }
+        ],
+        "key_insight": "The constraint name `constraint_evtol_altitude` follows the `domain_purpose` pattern. No bare English words. This prevents the grammar scoping bug that Forgemaster fixed in v0.1.0.",
+        "time_taken": "4 minutes",
+        "tokens_used": "~2,000"
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "Bare variable names (grammar scoping bug)",
+          "code": "# WRONG — bare English word, ambiguous scope\nconstraint {\n    assert: altitude > 0  # Which altitude? eVTOL? Drone? Satellite?\n}\n\n# RIGHT — domain_purpose pattern\nconstraint_evtol_altitude {\n    assert: altitude > 0  # Clear: this is the eVTOL altitude\n}",
+          "problem": "",
+          "fix": ""
+        },
+        {
+          "id": "B",
+          "title": "Wrong type in assertion",
+          "code": "constraint_test {\n    variables {\n        count: int\n    },\n    rule check {\n        assert: count >= 0.0  # WRONG: comparing int to float\n    }\n}\n\n# guard2mask error:\n# [ERROR] Type mismatch in assertion: int >= float\n# Fix: Use 0 (int) not 0.0 (float) for int comparisons",
+          "problem": "",
+          "fix": "Use 0 (int) not 0.0 (float) for int comparisons ```"
+        },
+        {
+          "id": "C",
+          "title": "Missing on_violation handler",
+          "code": "constraint_test {\n    rule check {\n        assert: temperature < 100.0\n        # Missing: on_violation\n    }\n}\n\n# guard2mask warning:\n# [WARN] No on_violation handler. Defaulting to LOG.\n# Fix: Always specify on_violation for safety-critical constraints",
+          "problem": "",
+          "fix": "Always specify on_violation for safety-critical constraints ```"
+        },
+        {
+          "id": "D",
+          "title": "Forgetting to verify semantic equivalence",
+          "code": "guard2mask compile constraint.guard --target flux-c --output out.fluxc\n# Agent skips verification step, assumes compiler is correct\n\n# RIGHT: Always verify\nguard2mask verify constraint.guard out.fluxc\n# [verify] Parsed source constraint... ✓\n# [verify] Parsed compiled output... ✓\n# [verify] Semantic equivalence: CHECKING...\n# [verify] ✓ Constraints are semantically equivalent",
+          "problem": "",
+          "fix": ""
+        }
+      ],
+      "exercise": {
+        "task": "Write a GUARD constraint for a maritime vessel's speed limit, compile it, verify it, and execute it with test inputs.",
+        "scaffolding": {
+          "level_1": {
+            "support": "high support",
+            "description": "fill in the blanks:",
+            "code_blocks": [
+              "",
+              ""
+            ]
+          }
+        },
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "Write a syntactically valid GUARD constraint",
+          "Compile it to FLUX-C without errors",
+          "Verify semantic equivalence (guard2mask verify passes)",
+          "Execute with at least 3 test inputs",
+          "At least 1 test shows PASS and 1 shows FAIL"
+        ],
+        "verification": "```bash\n# Automated checks\n[[ -f maritime.fluxc ]] && echo \"✓ Compiled output exists\"\nguard2mask verify constraint_maritime_speed_safety.guard maritime.fluxc && echo \"✓ Semantic equivalence verified\"\n[[ $(flux-vm run maritime.fluxc --input '{\"speed_knots\":12,\"visibility\":\"FOG\"}' | jq -r '.status') == \"FAIL\" ]] && echo \"✓ Violation detected\"\n[[ $(flux-vm run maritime.fluxc --input '{\"speed_knots\":8,\"visibility\":\"FOG\"}' | jq -r '.status') == \"PASS\" ]] && echo \"✓ Valid input accepted\"\n```",
+        "retry_allowed": false,
+        "max_retries": 0,
+        "on_pass": {
+          "unlock_competency": "repo_audit"
+        }
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "Using bare variable names instead of domain_purpose pattern",
+          "Wrong types in assertions (int vs float)",
+          "Forgetting `on_violation` handlers",
+          "Skipping the verification step",
+          "Not testing the FAIL case (agents often only test happy paths)"
+        ],
+        "teaching_strategy": [
+          "Start with Level 1 scaffolding — they fill in blanks",
+          "Emphasize: \"The compiler is not trusted. The verification is what matters.\"",
+          "Make them intentionally trigger a FAIL — it's the most important test",
+          "Connect to real world: \"This is how aviation software proves planes don't crash.\""
+        ]
+      },
+      "metadata": {}
+    },
+    "005-ci-deployment": {
+      "id": "005-ci-deployment",
+      "title": "CI Deployment — Automating Fleet Quality",
+      "level": "Sailor",
+      "competency": "ci_deployment",
+      "estimated_xp": 600,
+      "time": "25-35 minutes",
+      "prerequisites": [
+        "001-first-contact",
+        "003-tile-submission",
+        "004-guard-fundamentals"
+      ],
+      "learning_objectives": [
+        "Write a GitHub Actions workflow file",
+        "Configure CI to run tests, linting, and GUARD verification",
+        "Set up branch protection with required checks",
+        "Debug failing CI runs",
+        "Use CI as a fleet quality gate"
+      ],
+      "worked_example": {
+        "scenario": "You just wrote a new GUARD constraint compiler. You need CI to verify it on every push.",
+        "expert": "ccc-builder-1, 2026-05-04",
+        "steps": [
+          {
+            "description": "Create the workflow file",
+            "language": "yaml",
+            "code": "# .github/workflows/ci.yml\nname: Fleet CI\n\non:\n  push:\n    branches: [main, master]\n  pull_request:\n    branches: [main, master]\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        python-version: ['3.10', '3.11', '3.12']\n    \n    steps:\n      - uses: actions/checkout@v4\n      \n      - name: Set up Python\n        uses: actions/setup-python@v5\n        with:\n          python-version: ${{ matrix.python-version }}\n      \n      - name: Install dependencies\n        run: |\n          pip install -e .\n          pip install pytest pytest-cov flake8\n      \n      - name: Run tests\n        run: pytest --cov=src --cov-report=xml\n      \n      - name: Upload coverage\n        uses: codecov/codecov-action@v3\n        with:\n          files: ./coverage.xml\n  \n  guard-verify:\n    runs-on: ubuntu-latest\n    needs: test  # Only run if tests pass\n    \n    steps:\n      - uses: actions/checkout@v4\n      \n      - name: Install guard2mask\n        run: pip install guard2mask\n      \n      - name: Verify all GUARD constraints\n        run: |\n          for constraint in constraints/*.guard; do\n            echo \"Verifying $constraint...\"\n            guard2mask compile \"$constraint\" --target flux-c --verify\n          done\n      \n      - name: Check semantic equivalence\n        run: |\n          for guard in constraints/*.guard; do\n            fluxc=\"${guard%.guard}.fluxc\"\n            guard2mask verify \"$guard\" \"$fluxc\"\n          done\n  \n  lint:\n    runs-on: ubuntu-latest\n    \n    steps:\n      - uses: actions/checkout@v4\n      \n      - name: Lint with flake8\n        run: |\n          pip install flake8\n          flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics\n          flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics"
+          },
+          {
+            "description": "Commit and push",
+            "language": "bash",
+            "code": "git add .github/workflows/ci.yml\ngit commit -m \"feat: Add fleet CI with tests, GUARD verification, linting\"\ngit push origin main"
+          },
+          {
+            "description": "Verify CI runs",
+            "language": "bash",
+            "code": "# Check status via GitHub API\ncurl -s https://api.github.com/repos/SuperInstance/YOUR_REPO/actions/runs | jq '.workflow_runs[0].status'\n# Expected: \"completed\"\n# Conclusion: \"success\""
+          }
+        ],
+        "key_insight": "The `guard-verify` job only runs if `test` passes. This prevents wasting time verifying constraints in broken code.",
+        "time_taken": "6 minutes",
+        "tokens_used": "~4,000"
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "Wrong Python version in matrix",
+          "code": "# WRONG: Tests only on Python 3.12\npython-version: ['3.12']\n\n# Problem: Fleet agents run on various environments (Oracle1 has 3.10, FM has 3.11)\n# Fix: Test on all fleet Python versions\npython-version: ['3.10', '3.11', '3.12']",
+          "problem": "Fleet agents run on various environments (Oracle1 has 3.10, FM has 3.11)",
+          "fix": "Test on all fleet Python versions python-version: ['3.10', '3.11', '3.12'] ```"
+        },
+        {
+          "id": "B",
+          "title": "Missing branch triggers",
+          "code": "# WRONG: Only triggers on push to main\non:\n  push:\n    branches: [main]\n\n# Problem: Pull requests from feature branches don't trigger CI\n# Fix: Add pull_request trigger\non:\n  push:\n    branches: [main, master]\n  pull_request:\n    branches: [main, master]",
+          "problem": "Pull requests from feature branches don't trigger CI",
+          "fix": "Add pull_request trigger on:   push:     branches: [main, master]   pull_request:     branches: [main, master] ```"
+        },
+        {
+          "id": "C",
+          "title": "Forgetting to install package before testing",
+          "code": "# WRONG: Installs pytest but not the actual package\n- run: pip install pytest\n- run: pytest\n\n# Problem: Tests fail with \"ModuleNotFoundError: No module named 'your_package'\"\n# Fix: Install in editable mode\n- run: |\n    pip install -e .\n    pip install pytest",
+          "problem": "Tests fail with \"ModuleNotFoundError: No module named 'your_package'\"",
+          "fix": "Install in editable mode - run: |     pip install -e .     pip install pytest ```"
+        },
+        {
+          "id": "D",
+          "title": "CI passes but branch protection not enabled",
+          "code": "# Agent sees green checkmark, thinks they're done\n# Problem: Anyone can still push broken code directly to main\n# Fix: Enable branch protection via GitHub API or web UI\n\ncurl -X PUT \\\n  -H \"Authorization: token $GITHUB_TOKEN\" \\\n  -H \"Accept: application/vnd.github.v3+json\" \\\n  https://api.github.com/repos/SuperInstance/YOUR_REPO/branches/main/protection \\\n  -d '{\n    \"required_status_checks\": {\n      \"strict\": true,\n      \"contexts\": [\"test (3.10)\", \"test (3.11)\", \"test (3.12)\", \"guard-verify\", \"lint\"]\n    },\n    \"enforce_admins\": false,\n    \"required_pull_request_reviews\": {\n      \"required_approving_review_count\": 1\n    },\n    \"restrictions\": null\n  }'",
+          "problem": "Anyone can still push broken code directly to main",
+          "fix": "Enable branch protection via GitHub API or web UI  curl -X PUT \\   -H \"Authorization: token $GITHUB_TOKEN\" \\   -H \"Accept: application/vnd.github.v3+json\" \\   https://api.github.com/repos/SuperInstance/YOUR_REPO/branches/main/protection \\   -d '{     \"required_status_checks\": {       \"strict\": true,       \"contexts\": [\"test (3.10)\", \"test (3.11)\", \"test (3.12)\", \"guard-verify\", \"lint\"]     },     \"enforce_admins\": false,     \"required_pull_request_reviews\": {       \"required_approving_review_count\": 1     },     \"restrictions\": null   }' ```  ---"
+        }
+      ],
+      "exercise": {
+        "task": "Choose one of your repos (or create a test repo) and add comprehensive CI.",
+        "scaffolding": {
+          "level_1": {
+            "support": "high support",
+            "description": "copy this template:",
+            "code_blocks": [
+              ""
+            ]
+          },
+          "level_2": {
+            "support": "medium support",
+            "description": "add these features to Level 1:",
+            "code_blocks": [
+              ""
+            ]
+          }
+        },
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "CI workflow file exists in `.github/workflows/`",
+          "At least 3 Python versions in test matrix",
+          "Tests run and pass",
+          "Linting runs (even if it finds issues — zero issues is ideal but not required)",
+          "Branch protection is enabled (or agent can explain how to enable it)"
+        ],
+        "verification": "```bash\n# Automated checks\n[[ -f .github/workflows/ci.yml ]] && echo \"✓ CI workflow exists\"\ncurl -s https://api.github.com/repos/SuperInstance/YOUR_REPO/actions/runs | jq '.workflow_runs[0].conclusion' | grep -q \"success\" && echo \"✓ CI passing\"\n```",
+        "retry_allowed": false,
+        "max_retries": 0,
+        "on_pass": {
+          "unlock_competency": "bottle_write"
+        }
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "YAML indentation errors (spaces matter!)",
+          "Forgetting to install the package in editable mode",
+          "Not testing on the Python versions the fleet actually uses",
+          "CI passes but branch protection isn't enabled (anyone can still push)",
+          "Missing `workflow_dispatch` for manual testing"
+        ],
+        "teaching_strategy": [
+          "Start with Level 1 — copy-paste the template",
+          "Make them push it and watch it run",
+          "Show them how to read CI logs when it fails",
+          "Emphasize: \"CI is not optional. It's the seatbelt.\""
+        ]
+      },
+      "metadata": {}
+    },
+    "006-bottle-writing": {
+      "id": "006-bottle-writing",
+      "title": "Bottle Writing — Structured Fleet Communication",
+      "level": "Sailor",
+      "competency": "bottle_write",
+      "estimated_xp": 600,
+      "time": "20-30 minutes",
+      "prerequisites": [
+        "003-tile-submission",
+        "005-ci-deployment"
+      ],
+      "learning_objectives": [
+        "Write a bottle in the I2I protocol format",
+        "Choose the right bottle type (INFO, AUDIT, REVIEW, RESPONSE, ALERT)",
+        "Include deliverables, blockers, lessons, and status",
+        "Drop bottles to the correct recipient (Oracle1, FM, JC1, fleet)",
+        "Read and respond to bottles from other agents"
+      ],
+      "worked_example": {
+        "scenario": "You just audited the PLATO Grammar Engine and found a security issue.",
+        "expert": "ccc-auditor-1, 2026-04-22",
+        "steps": [],
+        "key_insight": "",
+        "time_taken": "",
+        "tokens_used": ""
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "No I2I header",
+          "code": "# WRONG — looks like a random note, not a fleet message\nHey Oracle1, I found some issues in the grammar engine...\n\n# Problem: Oracle1 can't tell if this is urgent, what type it is, or who it's from\n# Fix: Always start with [I2I:TYPE] Sender → Recipient — Title",
+          "problem": "Oracle1 can't tell if this is urgent, what type it is, or who it's from",
+          "fix": "Always start with [I2I:TYPE] Sender → Recipient — Title ```"
+        },
+        {
+          "id": "B",
+          "title": "Missing status",
+          "code": "[I2I:INFO] CCC → Oracle1 — Grammar stuff\n\n...long description...\n# Missing: Is this done? In progress? Blocked?\n\n# Problem: Recipient doesn't know if they need to act or just be aware\n# Fix: Always include Status: COMPLETE / IN PROGRESS / BLOCKED",
+          "problem": "Recipient doesn't know if they need to act or just be aware",
+          "fix": "Always include Status: COMPLETE / IN PROGRESS / BLOCKED ```"
+        },
+        {
+          "id": "C",
+          "title": "No deliverables",
+          "code": "[I2I:AUDIT] CCC → Oracle1 — Repo audit\n\nI looked at the repo. It has issues.\n# No specifics. No list. No evidence.\n\n# Problem: \"It has issues\" is useless. Which issues? Where? How severe?\n# Fix: Use tables, lists, and specific file paths. Evidence, not impressions.",
+          "problem": "\"It has issues\" is useless. Which issues? Where? How severe?",
+          "fix": "Use tables, lists, and specific file paths. Evidence, not impressions. ```"
+        },
+        {
+          "id": "D",
+          "title": "Wrong recipient",
+          "code": "[I2I:ALERT] CCC → FM — Grammar Engine is down\n\n# Problem: FM didn't build the Grammar Engine. Oracle1 did.\n# Sending to FM wastes his time and delays the fix.\n# Fix: Know who owns what. When in doubt, send to Oracle1. He'll route.",
+          "problem": "FM didn't build the Grammar Engine. Oracle1 did. # Sending to FM wastes his time and delays the fix.",
+          "fix": "Know who owns what. When in doubt, send to Oracle1. He'll route. ```  ---"
+        }
+      ],
+      "exercise": {
+        "task": "Write three bottles to three different recipients, each with a different type.",
+        "scaffolding": {
+          "level_1": {
+            "support": "high support",
+            "description": "fill in the blanks:",
+            "code_blocks": []
+          }
+        },
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "Write 3 bottles in correct I2I format",
+          "Each bottle has: type, sender, recipient, title, status",
+          "At least 1 bottle includes a table or structured data",
+          "At least 1 bottle references evidence (file path, URL, command output)",
+          "All 3 bottles are saved to `data/bottles/{recipient}/`"
+        ],
+        "verification": "```bash\n# Automated checks\n[[ $(ls data/bottles/*/*.md 2>/dev/null | wc -l) -ge 3 ]] && echo \"✓ 3+ bottles written\"\nhead -1 data/bottles/*/*.md | grep -q \"I2I\" && echo \"✓ I2I format correct\"\n```",
+        "retry_allowed": false,
+        "max_retries": 0,
+        "on_pass": {}
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "Writing essays instead of structured bottles",
+          "Forgetting the I2I header",
+          "Not including status",
+          "Sending to the wrong recipient",
+          "No evidence (just impressions)"
+        ],
+        "teaching_strategy": [
+          "Show them 3 good bottles and 3 bad bottles",
+          "Have them identify what's wrong with the bad ones",
+          "Then have them write their own",
+          "Emphasize: \"Oracle1 is busy. Your bottle competes with 50 others. Make it scannable.\""
+        ]
+      },
+      "metadata": {}
+    },
+    "007-subagent-orchestration": {
+      "id": "007-subagent-orchestration",
+      "title": "Subagent Orchestration — Running Parallel Fleets",
+      "level": "Officer",
+      "competency": "subagent_spawn",
+      "estimated_xp": 1200,
+      "time": "40-50 minutes",
+      "prerequisites": [
+        "004-guard-fundamentals",
+        "005-ci-deployment",
+        "006-bottle-writing"
+      ],
+      "learning_objectives": [
+        "Spawn subagents with `sessions_spawn` for parallel task execution",
+        "Design task decomposition strategies that minimize dependencies",
+        "Harvest results from multiple subagents without losing outputs",
+        "Handle partial failures — retry, fallback, or abort",
+        "Prevent runaway spawning (cost guards, timeout guards)"
+      ],
+      "worked_example": {
+        "scenario": "You need to audit 5 fleet repos for secrets, stale branches, and README completeness. Doing this sequentially would take 2 hours. Doing it in parallel takes 20 minutes.",
+        "expert": "ccc-orchestrator, 2026-05-05",
+        "steps": [
+          {
+            "description": "",
+            "language": "bash",
+            "code": "# Step 1: List repos to audit\nREPOS=(\n  \"SuperInstance/cocapn-plato\"\n  \"SuperInstance/flux-research\"\n  \"SuperInstance/oracle1-vessel\"\n  \"SuperInstance/JetsonClaw1-vessel\"\n  \"SuperInstance/crab-traps\"\n)\n\n# Step 2: Design task prompts (one per repo)\n# Save each prompt to a file so sessions_spawn can read it\nmkdir -p /tmp/audit-tasks\nfor repo in \"${REPOS[@]}\"; do\n  cat > \"/tmp/audit-tasks/${repo//\\//-}.txt\" <<EOF\nYou are a security auditor. Audit repo: $repo\nCheck for:\n1. Exposed secrets (API keys, tokens, passwords) in code\n2. .gitignore completeness — are build artifacts committed?\n3. README.md quality — does it explain what the repo does?\n4. Stale branches older than 30 days\n\nReturn a structured report with:\n- PASS / FAIL per category\n- Specific file paths and line numbers for issues\n- Severity: CRITICAL / HIGH / MEDIUM / LOW\n- Recommended fixes\n\nBe thorough. This repo holds fleet infrastructure.\nEOF\ndone\n\n# Step 3: Spawn one subagent per repo (conceptual — actual sessions_spawn is via API)\n# In practice, you call the sessions_spawn tool with each prompt"
+          },
+          {
+            "description": "",
+            "language": "bash",
+            "code": "# Spawn agent 1 of 5\nSESSION_1=$(curl -s -X POST http://147.224.38.131:8848/sessions/spawn \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"model\": \"kimi-coding/k2p5\",\n    \"system_prompt\": \"You are a security auditor for the Cocapn Fleet.\",\n    \"task\": \"Audit SuperInstance/cocapn-plato for secrets, .gitignore issues, README quality, and stale branches. Return structured report.\",\n    \"timeout\": 900,\n    \"max_tokens\": 8000\n  }' | jq -r '.session_id')\n\necho \"Spawned session: $SESSION_1\""
+          },
+          {
+            "description": "Poll for completion (batch check)**",
+            "language": "bash",
+            "code": "# Check all spawned sessions\nfor session in $SESSION_1 $SESSION_2 $SESSION_3 $SESSION_4 $SESSION_5; do\n  status=$(curl -s \"http://147.224.38.131:8848/sessions/$SESSION_1/status\" | jq -r '.status')\n  echo \"$session: $status\"\ndone"
+          },
+          {
+            "description": "Harvest results**",
+            "language": "bash",
+            "code": "# Pull results from each completed session\nfor session in $SESSION_1 $SESSION_2 $SESSION_3 $SESSION_4 $SESSION_5; do\n  result=$(curl -s \"http://147.224.38.131:8848/sessions/$session/result\" | jq -r '.content')\n  echo \"=== $session ===\" >> /tmp/audit-report.md\n  echo \"$result\" >> /tmp/audit-report.md\n  echo \"\" >> /tmp/audit-report.md\ndone"
+          },
+          {
+            "description": "Synthesize**",
+            "language": "bash",
+            "code": "# Count findings across all repos\ncat /tmp/audit-report.md | grep -c \"CRITICAL\"  # Total critical issues\ncat /tmp/audit-report.md | grep -c \"HIGH\"      # Total high issues\ncat /tmp/audit-report.md | grep -c \"PASS\"        # How many passed cleanly"
+          }
+        ],
+        "key_insight": "Each subagent gets the SAME system prompt but a DIFFERENT task. They're clones with different missions. This prevents context pollution — one repo's issues don't leak into another's audit.",
+        "time_taken": "18 minutes (vs. ~2 hours sequential)",
+        "tokens_used": "~15,000 total (5 × ~3,000 each)"
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "No timeout guard — runaway agent",
+          "code": "# WRONG — spawned agent has no timeout\nsessions_spawn --task \"Audit all 500 repos\"  # No timeout specified\n# Problem: Agent runs forever, costs accumulate, main agent waits indefinitely\n# Fix: Always set timeout. A reasonable default is 15 minutes (900s).\n# If a task needs more, break it into smaller chunks.\nsessions_spawn --task \"Audit repos 1-10\" --timeout 900\nsessions_spawn --task \"Audit repos 11-20\" --timeout 900",
+          "problem": "Agent runs forever, costs accumulate, main agent waits indefinitely",
+          "fix": "Always set timeout. A reasonable default is 15 minutes (900s). # If a task needs more, break it into smaller chunks. sessions_spawn --task \"Audit repos 1-10\" --timeout 900 sessions_spawn --task \"Audit repos 11-20\" --timeout 900 ```"
+        },
+        {
+          "id": "B",
+          "title": "Overlapping context — one task poisons another",
+          "code": "# WRONG — all subagents share the same prompt with repo list\nTASK=\"Audit these repos: A, B, C, D, E\"\n# Agent gets confused: \"Wait, which repo am I auditing? All of them?\"\n# Problem: Ambiguous scope leads to shallow audits or mixed results\n# Fix: One repo per agent. Precise prompt. No ambiguity.\nTASK_A=\"Audit repo A only. Focus on secrets in src/ directory.\"\nTASK_B=\"Audit repo B only. Focus on .gitignore and build artifacts.\"",
+          "problem": "Ambiguous scope leads to shallow audits or mixed results",
+          "fix": "One repo per agent. Precise prompt. No ambiguity. TASK_A=\"Audit repo A only. Focus on secrets in src/ directory.\" TASK_B=\"Audit repo B only. Focus on .gitignore and build artifacts.\" ```"
+        },
+        {
+          "id": "C",
+          "title": "No result harvesting — agents finish, output lost",
+          "code": "# WRONG — spawned agents, never collected results\nsessions_spawn --task \"Audit repo A\"\nsessions_spawn --task \"Audit repo B\"\n# ...main agent moves on to other work...\n# Problem: Results are in session memory, not saved to disk. Sessions die. Output gone.\n# Fix: Poll for completion. Harvest to files. Verify before declaring done.",
+          "problem": "Results are in session memory, not saved to disk. Sessions die. Output gone.",
+          "fix": "Poll for completion. Harvest to files. Verify before declaring done. ```"
+        },
+        {
+          "id": "D",
+          "title": "No failure handling — one crash kills the batch",
+          "code": "# WRONG — assumes all 5 agents succeed\nfor i in {1..5}; do\n  results[$i]=$(sessions_spawn --task \"Audit repo $i\")\ndone\n# Problem: Agent 3 crashes on a malformed repo. results[3] is empty.\n# Main agent averages all 5, including the empty one, report is wrong.\n# Fix: Check each result. Retry failed ones. Flag incomplete data.\nfor i in {1..5}; do\n  if [[ -z \"${results[$i]}\" ]] || [[ \"${results[$i]}\" == *\"ERROR\"* ]]; then\n    echo \"Agent $i failed. Retrying...\"\n    results[$i]=$(sessions_spawn --task \"Audit repo $i (retry)\")\n  fi\ndone",
+          "problem": "Agent 3 crashes on a malformed repo. results[3] is empty. # Main agent averages all 5, including the empty one, report is wrong.",
+          "fix": "Check each result. Retry failed ones. Flag incomplete data. for i in {1..5}; do   if [[ -z \"${results[$i]}\" ]] || [[ \"${results[$i]}\" == *\"ERROR\"* ]]; then     echo \"Agent $i failed. Retrying...\"     results[$i]=$(sessions_spawn --task \"Audit repo $i (retry)\")   fi done ```  ---"
+        }
+      ],
+      "exercise": {
+        "task": "Validate an EMSOFT paper draft across 5 dimensions simultaneously.",
+        "scaffolding": {
+          "level_1": {
+            "support": "high support",
+            "description": "spawn 5 agents with pre-written prompts:",
+            "code_blocks": [
+              ""
+            ]
+          },
+          "level_2": {
+            "support": "medium support",
+            "description": "design the prompts yourself:",
+            "code_blocks": [
+              ""
+            ]
+          },
+          "level_3": {
+            "support": "low support",
+            "description": "full orchestration from scratch:",
+            "code_blocks": []
+          }
+        },
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "Spawn at least 3 subagents in parallel for a single task",
+          "Each subagent has a distinct, non-overlapping scope",
+          "Set timeout guards on all subagents (≤15 minutes)",
+          "Harvest results from all subagents to persistent files",
+          "Handle at least 1 failure (retry, fallback, or abort)",
+          "Synthesize a unified report from parallel outputs"
+        ],
+        "verification": "```bash\n# Automated checks\n[[ $(ls /tmp/validation-*.md 2>/dev/null | wc -l) -ge 3 ]] && echo \"✓ 3+ result files harvested\"\n[[ $(grep -c \"timeout\" /tmp/orchestration-log.txt 2>/dev/null) -ge 3 ]] && echo \"✓ Timeout guards set\"\n[[ $(grep -c \"retry\\|fallback\\|abort\" /tmp/orchestration-log.txt 2>/dev/null) -ge 1 ]] && echo \"✓ Failure handling present\"\n[[ -f /tmp/audit-report.md ]] && [[ $(wc -l < /tmp/audit-report.md) -gt 20 ]] && echo \"✓ Synthesized report exists\"\n```",
+        "retry_allowed": true,
+        "max_retries": 3,
+        "on_pass": {
+          "unlock_competency": "cross_linking"
+        }
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "Spawning 20 agents for a task that needs 3 (wasteful, hard to manage)",
+          "Giving vague tasks: \"audit this repo\" instead of \"find secrets in src/\"",
+          "Forgetting to poll — agents finish, main agent never notices",
+          "No synthesis step — 5 reports sit in 5 files, nobody reads them",
+          "Missing the abort gate — 4 of 5 agents fail, main agent averages garbage"
+        ],
+        "teaching_strategy": [
+          "Start with a 2-agent example (something simple, like checking 2 URLs)",
+          "Then scale to 3-5 agents for a real fleet task",
+          "Emphasize: \"The main agent is the conductor. The subagents are the orchestra. If the conductor stops listening, the music stops.\"",
+          "Force a failure: have one agent timeout intentionally, make them handle it"
+        ]
+      },
+      "metadata": {}
+    },
+    "008-cross-linking": {
+      "id": "008-cross-linking",
+      "title": "Cross-Linking Fleet Resources — The Web of Ships",
+      "level": "Officer",
+      "competency": "cross_linking",
+      "estimated_xp": 900,
+      "time": "25-35 minutes",
+      "prerequisites": [
+        "005-ci-deployment",
+        "006-bottle-writing",
+        "007-subagent-orchestration"
+      ],
+      "learning_objectives": [
+        "Link agent repos to GitHub Pages for public fleet documentation",
+        "Build a fleet resource index that lists all ships and their outputs",
+        "Maintain link integrity — detect and fix broken links automatically",
+        "Generate cross-reference maps between repos, docs, and deployed services",
+        "Publish fleet dashboards that stay current without manual updates"
+      ],
+      "worked_example": {
+        "scenario": "You need to create a living index of all fleet resources that auto-updates via GitHub Actions.",
+        "expert": "ccc-librarian, 2026-05-05",
+        "steps": [
+          {
+            "description": "Enable GitHub Pages on a repo**",
+            "language": "bash",
+            "code": "# The fleet-index repo hosts the master index\ngh repo create SuperInstance/fleet-index --public --clone\ncd fleet-index\n\n# Enable GitHub Pages (source: main branch, /docs folder)\ngh api repos/SuperInstance/fleet-index/pages \\\n  --method PUT \\\n  --input - <<< '{\"source\":{\"branch\":\"main\",\"path\":\"/docs\"}}'"
+          }
+        ],
+        "key_insight": "",
+        "time_taken": "",
+        "tokens_used": ""
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "Hardcoded URLs that rot",
+          "code": "# WRONG — absolute URL that breaks when repo moves\n[FLUX Paper](https://superinstance.github.io/flux-research/papers/emsoft-flux-final.md)\n\n# Problem: If the repo is renamed or the path changes, this link dies\n# Fix: Use relative links within repos. Use repo-root references for cross-repo links.\n[FLUX Paper](https://github.com/SuperInstance/flux-research/blob/main/docs/papers/emsoft-flux-final.md)\n# GitHub redirects on renames, raw URLs are more stable than Pages URLs",
+          "problem": "If the repo is renamed or the path changes, this link dies",
+          "fix": "Use relative links within repos. Use repo-root references for cross-repo links. [FLUX Paper](https://github.com/SuperInstance/flux-research/blob/main/docs/papers/emsoft-flux-final.md) # GitHub redirects on renames, raw URLs are more stable than Pages URLs ```"
+        },
+        {
+          "id": "B",
+          "title": "Missing GitHub Pages setup",
+          "code": "# WRONG — pushed docs/ but Pages isn't enabled\nmkdir docs && echo \"# Fleet Index\" > docs/index.md\ngit add docs && git commit -m \"add docs\"\n# Problem: GitHub Pages shows 404 because Pages wasn't enabled in repo settings\n# Fix: Explicitly enable Pages via API or Settings UI\ncurl -X POST https://api.github.com/repos/SuperInstance/fleet-index/pages \\\n  -H \"Authorization: token $GITHUB_TOKEN\" \\\n  -d '{\"source\":{\"branch\":\"main\",\"path\":\"/docs\"}}'",
+          "problem": "GitHub Pages shows 404 because Pages wasn't enabled in repo settings",
+          "fix": "Explicitly enable Pages via API or Settings UI curl -X POST https://api.github.com/repos/SuperInstance/fleet-index/pages \\   -H \"Authorization: token $GITHUB_TOKEN\" \\   -d '{\"source\":{\"branch\":\"main\",\"path\":\"/docs\"}}' ```"
+        },
+        {
+          "id": "C",
+          "title": "No link checking — broken links accumulate",
+          "code": "# WRONG — publish index, never check if links work\n# After 3 months, 40% of external links are dead\n# Fix: Add markdown-link-check to CI, run weekly\nnpm install -g markdown-link-check\nmarkdown-link-check docs/index.md\n# Or use lycheeverse/lychee for faster bulk checking\nlychee docs/*.md --exclude-mail",
+          "problem": "",
+          "fix": "Add markdown-link-check to CI, run weekly npm install -g markdown-link-check markdown-link-check docs/index.md # Or use lycheeverse/lychee for faster bulk checking lychee docs/*.md --exclude-mail ```"
+        },
+        {
+          "id": "D",
+          "title": "Manual updates — index goes stale",
+          "code": "# WRONG — generated once, never updated again\n# Problem: New repos join. Old repos archive. Services move ports. Index lies.\n# Fix: GitHub Actions cron job. Or better: trigger on repo creation events via webhook.\n# The 6-hour cron is the minimum viable. The webhook is the ideal.",
+          "problem": "New repos join. Old repos archive. Services move ports. Index lies.",
+          "fix": "GitHub Actions cron job. Or better: trigger on repo creation events via webhook. # The 6-hour cron is the minimum viable. The webhook is the ideal. ```  ---"
+        }
+      ],
+      "exercise": {
+        "task": "Take the audit report from Lesson 007 and publish it as a linked fleet resource.",
+        "scaffolding": {
+          "level_1": {
+            "support": "high support",
+            "description": "follow the worked example:",
+            "code_blocks": [
+              ""
+            ]
+          }
+        },
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "Create a GitHub Pages site with at least one fleet resource index page",
+          "Add working links to at least 3 fleet repos or services",
+          "Run a link checker and show 0 broken links (or document known exceptions)",
+          "Set up automated update (GitHub Actions cron or trigger)",
+          "Link the new resource FROM at least one other fleet location (README, bottle, etc.)"
+        ],
+        "verification": "```bash\n# Automated checks\n[[ -f docs/index.md ]] && echo \"✓ Index page exists\"\n[[ $(grep -c \"http\" docs/index.md) -ge 3 ]] && echo \"✓ 3+ links present\"\nmarkdown-link-check docs/index.md 2>/dev/null | grep -q \"0 dead\" && echo \"✓ No broken links\"\n[[ -f .github/workflows/update-index.yml ]] && echo \"✓ Auto-update configured\"\n```",
+        "retry_allowed": true,
+        "max_retries": 3,
+        "on_pass": {
+          "unlock_competency": "security_audit"
+        }
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "Forgetting to enable Pages in repo settings (most common)",
+          "Using absolute URLs that break on renames",
+          "Not checking links after publishing — 404s accumulate silently",
+          "Manual updates that never happen — the index rots in 2 weeks",
+          "Over-engineering: trying to build a full CMS when a markdown table suffices"
+        ],
+        "teaching_strategy": [
+          "Have them manually create one Pages site first (understand the mechanics)",
+          "Then automate it with Actions (understand the maintenance)",
+          "Then link two sites together (understand the graph)",
+          "Emphasize: \"A link that isn't checked is a link that's already broken.\""
+        ]
+      },
+      "metadata": {}
+    },
+    "009-security-auditing": {
+      "id": "009-security-auditing",
+      "title": "Security Auditing — Finding the Cracks",
+      "level": "Officer",
+      "competency": "security_audit",
+      "estimated_xp": 1100,
+      "time": "35-45 minutes",
+      "prerequisites": [
+        "004-guard-fundamentals",
+        "007-subagent-orchestration",
+        "008-cross-linking"
+      ],
+      "learning_objectives": [
+        "Audit repos for exposed secrets using automated tools and manual inspection",
+        "Validate .gitignore completeness — find files that shouldn't be committed",
+        "Check for exposed credentials in environment variables, config files, and logs",
+        "Assess fleet-wide security posture and produce a graded report",
+        "Write remediation bottles with prioritized fix lists"
+      ],
+      "worked_example": {
+        "scenario": "Audit `SuperInstance/cocapn-plato` for secrets, misconfigurations, and exposed credentials.",
+        "expert": "ccc-auditor-1, 2026-04-22",
+        "steps": [
+          {
+            "description": "Automated secret scan**",
+            "language": "bash",
+            "code": "# Install truffleHOG (scans git history for secrets)\npip install truffleHOG\n\n# Scan the repo\ntruffleHOG --json --regex SuperInstance/cocapn-plato > /tmp/plato-secrets.json\n\n# Check findings\ncat /tmp/plato-secrets.json | jq '.[] | {commit: .commitHash, branch: .branch, path: .path, reason: .reason}'"
+          },
+          {
+            "description": ".gitignore audit**",
+            "language": "bash",
+            "code": "# Clone and check\ngit clone https://github.com/SuperInstance/cocapn-plato.git /tmp/plato-audit\ncd /tmp/plato-audit\n\n# What SHOULD be in .gitignore but isn't?\nCOMMON_IGNORES=(\n  \".env\"\n  \"*.pem\"\n  \"*.key\"\n  \"node_modules/\"\n  \"__pycache__/\"\n  \".DS_Store\"\n  \"*.log\"\n  \"dist/\"\n  \"build/\"\n  \".terraform/\"\n)\n\nfor item in \"${COMMON_IGNORES[@]}\"; do\n  if ! grep -q \"$item\" .gitignore 2>/dev/null; then\n    echo \"MISSING from .gitignore: $item\"\n  fi\ndone\n\n# What IS committed that shouldn't be?\nfind . -name \"*.pem\" -o -name \"*.key\" -o -name \".env\" | grep -v node_modules | grep -v \".git/\""
+          },
+          {
+            "description": "Check for hardcoded credentials**",
+            "language": "bash",
+            "code": "# Search patterns that indicate secrets\ngrep -r -i -n -E \"(api[_-]?key|token|secret|password|passwd|auth)\" \\\n  --include=\"*.py\" --include=\"*.js\" --include=\"*.ts\" --include=\"*.sh\" \\\n  --include=\"*.yml\" --include=\"*.yaml\" --include=\"*.json\" \\\n  --include=\"*.md\" --include=\"*.env*\" \\\n  . | grep -v \"example\" | grep -v \"test\" | grep -v \"placeholder\" | head -50\n\n# Check specifically for AWS keys\ngrep -r -n -E \"AKIA[0-9A-Z]{16}\" . 2>/dev/null\n\n# Check for GitHub tokens\ngrep -r -n -E \"gh[pousr]_[A-Za-z0-9_]{36,}\" . 2>/dev/null\n\n# Check for private keys\ngrep -r -n -E \"BEGIN (RSA|EC|DSA|OPENSSH) PRIVATE KEY\" . 2>/dev/null"
+          },
+          {
+            "description": "Check GitHub Actions for secret exposure**",
+            "language": "bash",
+            "code": "# Actions files may log secrets if not careful\ngrep -r -n \"echo.*secrets\\.\" .github/workflows/ 2>/dev/null\ngrep -r -n \"printenv\" .github/workflows/ 2>/dev/null\n\n# Check for pull_request_target with untrusted code\nfind .github/workflows -name \"*.yml\" -exec grep -l \"pull_request_target\" {} \\;"
+          },
+          {
+            "description": "Check Docker images**",
+            "language": "bash",
+            "code": "# Dockerfiles may bake in secrets\nfind . -name \"Dockerfile*\" -exec grep -l \"ENV.*SECRET\\|ARG.*TOKEN\\|echo.*secret\" {} \\;\n\n# .dockerignore should exist\n[[ -f .dockerignore ]] && echo \"✓ .dockerignore exists\" || echo \"✗ Missing .dockerignore\""
+          }
+        ],
+        "key_insight": "",
+        "time_taken": "",
+        "tokens_used": ""
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "Only scanning HEAD, not history",
+          "code": "# WRONG — grep current files only\ngrep -r \"API_KEY\" .\n# Problem: The secret was removed from HEAD but still exists in git history\n# Anyone with repo access can check out the old commit and see it\n# Fix: Use truffleHOG or git log -p -S to scan history\ngit log -p -S \"API_KEY\" --all\n# Or: truffleHOG --regex (scans all commits)",
+          "problem": "The secret was removed from HEAD but still exists in git history # Anyone with repo access can check out the old commit and see it",
+          "fix": "Use truffleHOG or git log -p -S to scan history git log -p -S \"API_KEY\" --all # Or: truffleHOG --regex (scans all commits) ```"
+        },
+        {
+          "id": "B",
+          "title": "Trusting .gitignore without verifying",
+          "code": "# WRONG — checked .gitignore exists, didn't check what's actually committed\n[[ -f .gitignore ]] && echo \"OK\"\n# Problem: .gitignore has \"*.pem\" but someone force-added a .pem file\n# Fix: List all committed files that match secret patterns\nfind . -name \"*.pem\" | xargs git ls-files\n# If any show up, they're tracked despite .gitignore",
+          "problem": ".gitignore has \"*.pem\" but someone force-added a .pem file",
+          "fix": "List all committed files that match secret patterns find . -name \"*.pem\" | xargs git ls-files # If any show up, they're tracked despite .gitignore ```"
+        },
+        {
+          "id": "C",
+          "title": "Missing the CI/CD attack surface",
+          "code": "# WRONG — audited source code, ignored .github/workflows/\n# Problem: A workflow with `pull_request_target` can be exploited by forks\n# to exfiltrate secrets via malicious PRs\n# Fix: Audit all workflow files for:\n#   - pull_request_target (dangerous)\n#   - secrets printed to logs\n#   - untrusted actions (third-party actions with write access)",
+          "problem": "A workflow with `pull_request_target` can be exploited by forks # to exfiltrate secrets via malicious PRs",
+          "fix": "Audit all workflow files for: #   - pull_request_target (dangerous) #   - secrets printed to logs #   - untrusted actions (third-party actions with write access) ```"
+        },
+        {
+          "id": "D",
+          "title": "Reporting without severity — everything is \"an issue\"",
+          "code": "# WRONG — flat list, no prioritization\n- Found API key\n- .gitignore missing .log\n- Docker image has old base\n# Problem: Owner doesn't know what to fix first. Medium issues drown critical ones.\n# Fix: Grade each finding (CRITICAL/HIGH/MEDIUM/LOW). Set fix deadlines. Assign owners.",
+          "problem": "Owner doesn't know what to fix first. Medium issues drown critical ones.",
+          "fix": "Grade each finding (CRITICAL/HIGH/MEDIUM/LOW). Set fix deadlines. Assign owners. ```  ---"
+        }
+      ],
+      "exercise": {
+        "task": "Assess the security posture of the entire fleet (5+ repos) and produce a graded report.",
+        "scaffolding": {
+          "level_1": {
+            "support": "high support",
+            "description": "use the worked example script:",
+            "code_blocks": []
+          }
+        },
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "Scan at least 3 repos for secrets (automated or manual)",
+          "Find and document at least 1 real issue (even if LOW severity)",
+          "Check .gitignore on all audited repos",
+          "Assign severity grades (CRITICAL/HIGH/MEDIUM/LOW) to findings",
+          "Write a bottle to the correct fleet member with prioritized fixes",
+          "Include specific file paths and line numbers for at least 1 finding"
+        ],
+        "verification": "```bash\n# Automated checks\n[[ $(find /tmp -name \"secrets-*.json\" 2>/dev/null | wc -l) -ge 3 ]] && echo \"✓ 3+ repos scanned\"\n[[ -f /tmp/fleet-security-report.md ]] && echo \"✓ Report generated\"\ngrep -q \"CRITICAL\\|HIGH\\|MEDIUM\\|LOW\" /tmp/fleet-security-report.md && echo \"✓ Severity grades present\"\ngrep -q \"data/bottles\" <<< \"$(find /tmp -name \"*.md\" 2>/dev/null)\" || echo \"⚠ Bottle not in standard location — check manually\"\n```",
+        "retry_allowed": true,
+        "max_retries": 3,
+        "on_pass": {}
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "Only scanning current files, not git history (biggest miss)",
+          "Finding a secret and not knowing how to remove it from history (BFG, filter-repo)",
+          "Reporting everything as HIGH — no prioritization",
+          "Forgetting the CI/CD surface (workflows are code too)",
+          "Not following up — audit without remediation is theater"
+        ],
+        "teaching_strategy": [
+          "Start with a repo you KNOW has an issue (use a test repo with a fake secret)",
+          "Have them find it with both automated and manual methods",
+          "Then move to real fleet repos",
+          "Emphasize: \"The goal isn't to find every bug. It's to find the ones that hurt before an outsider does.\""
+        ]
+      },
+      "metadata": {}
+    },
+    "010-fleet-orchestration": {
+      "id": "010-fleet-orchestration",
+      "title": "Fleet Orchestration — Conducting the Swarm",
+      "level": "Captain",
+      "competency": "fleet_orchestrate",
+      "estimated_xp": 1500,
+      "time": "45-60 minutes",
+      "prerequisites": [
+        "007-subagent-orchestration",
+        "008-cross-linking",
+        "009-security-auditing"
+      ],
+      "learning_objectives": [
+        "Coordinate multiple agents across different fleet nodes using the Federated Nexus",
+        "Broadcast fleet-wide messages and filter responses by role, capability, or availability",
+        "Design task decomposition strategies that span multiple subagent generations",
+        "Route information to the correct fleet member using I2I protocol and channel tags",
+        "Maintain situational awareness of fleet status — who's online, who's overloaded, who's stuck"
+      ],
+      "worked_example": {
+        "scenario": "Casey wants a full fleet status report + a design review of 3 landing pages + a security audit of the 2 most recently modified repos — all within 30 minutes. You are the Captain. This is your job.",
+        "expert": "ccc-captain, 2026-05-05",
+        "steps": [
+          {
+            "description": "Assess fleet capacity before spawning**",
+            "language": "bash",
+            "code": "# Check node health via PLATO status endpoint\ncurl -s http://147.224.38.131:8847/status | jq '.nodes[] | {name: .name, load: .context_percent, status: .status}'\n\n# Check ZC feed volume\ncurl -s http://147.224.38.131:8847/status | jq '.zc_stats.tiles_last_5min'\n\n# Check current subagent count\nopenclaw sessions list --format json | jq '.sessions | length'"
+          },
+          {
+            "description": "Design task packages and assign to appropriate nodes**",
+            "language": "bash",
+            "code": "# Task A: Fleet status report (lightweight, goes to a scout)\ncat > /tmp/task-fleet-status.md <<'EOF'\n**Mission:** Fleet Status Report\n**Priority:** HIGH\n**Deadline:** 15 minutes\n\nCollect and synthesize:\n1. All node health from 147.224.38.131:8847/status\n2. Open issues across fleet repos (SuperInstance/*)\n3. ZC tile volume for last 24 hours\n4. Any ERROR or WARN entries in recent logs\n\nReturn a one-page markdown report with:\n- GREEN/YELLOW/RED status per node\n- Top 3 issues requiring attention\n- ZC trend (up/down/stable)\nEOF\n\n# Task B: Landing page design review (creative, stays on CCC node)\ncat > /tmp/task-design-review.md <<'EOF'\n**Mission:** Design Review — 3 Landing Pages\n**Priority:** MEDIUM\n**Deadline:** 20 minutes\n\nReview these domains for design consistency and voice:\n- https://dmlog.ai/\n- https://fishinglog.ai/\n- https://playerlog.ai/\n\nCheck:\n1. Does each domain have a distinct personality?\n2. Are CTAs clear and above the fold?\n3. Mobile responsiveness (describe, don't test)\n4. Any stale claims or broken references\n\nReturn scored review (0-10 per domain) + specific fixes.\nEOF\n\n# Task C: Security audit of 2 latest repos (audit, goes to auditor agent)\ncat > /tmp/task-security-audit.md <<'EOF'\n**Mission:** Security Audit — Latest Fleet Repos\n**Priority:** HIGH\n**Deadline:** 25 minutes\n\nAudit these 2 repos (most recently modified):\n1. SuperInstance/cocapn-plato (check latest commits)\n2. SuperInstance/flux-research (check latest commits)\n\nRun:\n- truffleHOG or manual secret scan\n- .gitignore completeness check\n- Check for hardcoded credentials in new files\n\nReturn graded report (A-F per repo) with CRITICAL/HIGH/MEDIUM/LOW findings.\nEOF"
+          },
+          {
+            "description": "Spawn subagents with node affinity and collect results**",
+            "language": "bash",
+            "code": "# Spawn Task A (scout) — lightweight, any node\n# In practice via OpenClaw:\nopenclaw sessions spawn --task /tmp/task-fleet-status.md --model kimi-coding/k2p5 --label scout-fleet-status\n\n# Spawn Task B (design review) — stays on main node for creative work\nopenclaw sessions spawn --task /tmp/task-design-review.md --model kimi-coding/k2p5 --label ccc-design-review\n\n# Spawn Task C (audit) — dedicated audit agent\nopenclaw sessions spawn --task /tmp/task-security-audit.md --model kimi-coding/k2p5 --label auditor-security"
+          },
+          {
+            "description": "Monitor and handle partial failures**",
+            "language": "bash",
+            "code": "# Poll for completion (every 5 minutes)\nopenclaw sessions list | grep -E \"scout-fleet-status|ccc-design-review|auditor-security\"\n\n# If any agent is stuck >30 min, check its logs\nopenclaw sessions logs --session <session_id> --tail 50\n\n# If an agent failed, respawn with adjusted prompt (simpler scope, clearer instructions)\n# Example: auditor-security timed out — split into 2 smaller audits"
+          }
+        ],
+        "key_insight": "",
+        "time_taken": "",
+        "tokens_used": ""
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "Spawning without checking fleet capacity first",
+          "code": "# WRONG — spawn 5 subagents without checking node load\nopenclaw sessions spawn --task heavy-task.md --count 5\n# Problem: FM's workstation is already at 88% load. Spawning more agents there\n# causes context overflow, timeouts, and cascading failures across the fleet.\n# Fix: Always check node health before spawning. Route heavy tasks away from RED nodes.\ncurl -s http://147.224.38.131:8847/status | jq '.nodes[] | select(.context_percent > 80) | .name'\n# If any node >80%, either defer the task or route to a GREEN node.",
+          "problem": "FM's workstation is already at 88% load. Spawning more agents there # causes context overflow, timeouts, and cascading failures across the fleet.",
+          "fix": "Always check node health before spawning. Route heavy tasks away from RED nodes. curl -s http://147.224.38.131:8847/status | jq '.nodes[] | select(.context_percent > 80) | .name' # If any node >80%, either defer the task or route to a GREEN node. ```"
+        },
+        {
+          "id": "B",
+          "title": "Broadcasting fleet messages without filtering",
+          "code": "# WRONG — send every finding to every channel\n[I2I] CCC → #fleet-ops, #cocapn-build, #research, Casey DM, Oracle1 DM\n\"Found a MEDIUM issue in playerlog.ai heading color\"\n# Problem: Channel fatigue. People stop reading your messages because most\n# of them aren't relevant to them. The boy who cried wolf gets ignored when\n# the server actually burns.\n# Fix: Use channel tags and role-based routing.\n# Design issues → #cocapn-build + Oracle1\n# Security CRITICAL → #fleet-ops + Casey + Oracle1\n# Security LOW → handle directly, don't broadcast\n# ZC trends → #research",
+          "problem": "Channel fatigue. People stop reading your messages because most # of them aren't relevant to them. The boy who cried wolf gets ignored when # the server actually burns.",
+          "fix": "Use channel tags and role-based routing. # Design issues → #cocapn-build + Oracle1 # Security CRITICAL → #fleet-ops + Casey + Oracle1 # Security LOW → handle directly, don't broadcast # ZC trends → #research ```"
+        },
+        {
+          "id": "C",
+          "title": "Losing subagent results because no harvest plan",
+          "code": "# WRONG — spawn agents, wait, then realize you don't know where outputs went\nopenclaw sessions spawn --task audit.md\n# ...30 minutes later...\n# \"Where did the auditor put the report?\"\n# Problem: Subagents write to /tmp/ by default. Files get cleaned up. Results are lost.\n# Fix: Mandate output paths in every task prompt.\ncat > /tmp/task-audit.md <<'EOF'\n**OUTPUT REQUIREMENT:**\nWrite your final report to: /root/.openclaw/workspace/reports/audit-$(date +%s).md\nInclude this header in your final message: [COMPLETE:audit-report]\nEOF\n# Then the orchestrator can:\ngrep -r \"\\[COMPLETE:audit-report\\]\" /root/.openclaw/workspace/reports/",
+          "problem": "Subagents write to /tmp/ by default. Files get cleaned up. Results are lost.",
+          "fix": "Mandate output paths in every task prompt. cat > /tmp/task-audit.md <<'EOF' **OUTPUT REQUIREMENT:** Write your final report to: /root/.openclaw/workspace/reports/audit-$(date +%s).md Include this header in your final message: [COMPLETE:audit-report] EOF # Then the orchestrator can: grep -r \"\\[COMPLETE:audit-report\\]\" /root/.openclaw/workspace/reports/ ```"
+        },
+        {
+          "id": "D",
+          "title": "Treating all subagents as identical — no specialization",
+          "code": "# WRONG — same model, same prompt for creative and audit tasks\nopenclaw sessions spawn --task creative-design.md --model kimi-coding/k2p5\nopenclaw sessions spawn --task security-audit.md --model kimi-coding/k2p5\n# Problem: The same model handles both. It works, but it's inefficient.\n# Creative tasks benefit from high-temperature, narrative models.\n# Audit tasks benefit from deterministic, structured models.\n# Fix: Match agent capability to task type.\n# Creative → kimi-coding/k2p5 (high reasoning)\n# Audit → kimi-coding/k2p5 with explicit structured output requirements\n# Code generation → kimi-coding/k2p5\n# Research synthesis → kimi-coding/k2p5 with long-context",
+          "problem": "The same model handles both. It works, but it's inefficient. # Creative tasks benefit from high-temperature, narrative models. # Audit tasks benefit from deterministic, structured models.",
+          "fix": "Match agent capability to task type. # Creative → kimi-coding/k2p5 (high reasoning) # Audit → kimi-coding/k2p5 with explicit structured output requirements # Code generation → kimi-coding/k2p5 # Research synthesis → kimi-coding/k2p5 with long-context ```  ---"
+        }
+      ],
+      "exercise": {
+        "task": "Casey needs a complete fleet pulse delivered in 30 minutes covering: 1. Node health status for all fleet nodes 2. A design review of 2 underperforming domains 3. A security scan of the repo with the most recent commits 4. A summary of ZC trends from the last 24 hours",
+        "scaffolding": {
+          "level_1": {
+            "support": "high support",
+            "description": "use the worked example structure:",
+            "code_blocks": [
+              ""
+            ]
+          }
+        },
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "Check fleet node health before spawning any subagents",
+          "Design at least 3 parallel tasks with clear output requirements",
+          "Spawn subagents with distinct labels for monitoring",
+          "Collect and synthesize results into a single report",
+          "Route findings to at least 2 distinct channels or fleet members based on content type",
+          "Handle at least 1 partial failure (timeout, missing output, or unclear result) with a retry or fallback"
+        ],
+        "verification": "```bash\n# Automated checks\n[[ -f /tmp/captain-drill/final-synthesis.md ]] && echo \"✓ Synthesis report exists\"\ngrep -q \"GREEN\\|YELLOW\\|RED\" /tmp/captain-drill/final-synthesis.md && echo \"✓ Node health included\"\ngrep -q \"\\[I2I\\|#fleet-ops\\|#cocapn-build\\|#research\" /tmp/captain-drill/final-synthesis.md && echo \"✓ Routing tags present\"\n[[ $(grep -c \"COMPLETE\" /tmp/captain-drill/report-*.md 2>/dev/null) -ge 2 ]] && echo \"✓ Multiple subagent outputs collected\"\n# Partial failure handling — check manually for retry logs or adjusted scope\n```",
+        "retry_allowed": true,
+        "max_retries": 2,
+        "on_pass": {}
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "Spawning all agents on the same node because it's \"easiest\" — spreads the load, check node affinity",
+          "Writing task prompts without output requirements — agents return prose in chat, not files. Always specify paths.",
+          "Not monitoring — spawn and forget. An agent stuck in a loop burns tokens for an hour. Set a poll schedule.",
+          "Routing everything to Casey — he's busy. Filter. Only escalate CRITICAL or things only he can fix.",
+          "Synthesis that is just copy-paste — a Captain adds judgment. \"The auditor found 3 issues. Only 1 matters. Here's why.\""
+        ],
+        "teaching_strategy": [
+          "Start with a simple 2-agent drill (health + one other)",
+          "Once that works smoothly, add the third and fourth",
+          "Introduce a deliberate failure (e.g., an agent with an impossible scope) and teach graceful degradation",
+          "The synthesis is the hardest part — most agents just concatenate. Teach them to rank, filter, and judge."
+        ]
+      },
+      "metadata": {}
+    },
+    "011-service-healing": {
+      "id": "011-service-healing",
+      "title": "Service Healing — Field Surgery",
+      "level": "Captain",
+      "competency": "service_heal",
+      "estimated_xp": 1400,
+      "time": "40-50 minutes",
+      "prerequisites": [
+        "005-ci-deployment",
+        "007-subagent-orchestration",
+        "010-fleet-orchestration"
+      ],
+      "learning_objectives": [
+        "Detect service failures using health endpoints, logs, and heartbeat monitors",
+        "Classify failure modes — crash, hang, resource exhaustion, dependency failure, or config drift",
+        "Execute healing actions: restart, reroute traffic, failover to backup, or escalate",
+        "Write healing scripts that are idempotent, safe to rerun, and logged",
+        "Build a minimal self-healing loop that detects → diagnoses → acts → verifies"
+      ],
+      "worked_example": {
+        "scenario": "The tile status endpoint at `147.224.38.131:8847/status` returns 502 Bad Gateway. ZC tiles are not being ingested. This is a fleet-critical service.",
+        "expert": "ccc-healer, 2026-05-05",
+        "steps": [
+          {
+            "description": "Detect and confirm the failure**",
+            "language": "bash",
+            "code": "# Primary health check\ncurl -s -o /dev/null -w \"%{http_code}\" http://147.224.38.131:8847/status\n# Returns: 502\n\n# Secondary check — is the host reachable?\nping -c 3 147.224.38.131\n# Should return: 0% packet loss\n\n# Tertiary check — is the port listening?\nnc -zv 147.224.38.131 8847\n# Should return: Connection refused or timeout\n\n# Confirm it's not a transient blip\nfor i in {1..5}; do\n  curl -s -o /dev/null -w \"%{http_code}\\n\" http://147.224.38.131:8847/status\n  sleep 2\ndone\n# All 5 return 502 — confirmed failure, not transient"
+          },
+          {
+            "description": "Diagnose — collect evidence**",
+            "language": "bash",
+            "code": "# Check if the service process is running\nssh 147.224.38.131 \"ps aux | grep -E 'plato|tile|8847' | grep -v grep\"\n# Returns: nothing — process is dead\n\n# Check system resources on the host\nssh 147.224.38.131 \"df -h && free -h && uptime\"\n# Disk: 92% full — possible cause\n# Memory: 3.2G available — not memory\n# Load: 0.45 — not CPU\n\n# Check recent logs\nssh 147.224.38.131 \"tail -n 100 /var/log/plato/tile-server.log\"\n# Shows: \"ENOSPC: no space left on device\" at 02:14 UTC\n\n# Check what filled the disk\nssh 147.224.38.131 \"du -sh /var/log/* /tmp/* 2>/dev/null | sort -hr | head -10\"\n# Shows: /var/log/plato/debug.log = 47G"
+          },
+          {
+            "description": "Classify the failure**",
+            "language": "bash",
+            "code": "# Diagnosis: RESOURCE EXHAUSTION (disk full)\n# Sub-type: Log rotation failure — debug.log grew unbounded\n# Severity: HIGH — service is down, but no data loss (tiles are buffered upstream)\n# Safe to restart? YES — but only after freeing disk space\n# Will it recur? YES — unless log rotation is fixed"
+          },
+          {
+            "description": "Act — healing script**",
+            "language": "bash",
+            "code": "#!/bin/bash\n# heal-tile-server.sh — Idempotent healing script for PLATO tile server\n# Author: ccc-healer\n# Date: 2026-05-05\n\nset -euo pipefail\n\nHOST=\"147.224.38.131\"\nSERVICE_NAME=\"plato-tile-server\"\nLOG_DIR=\"/var/log/plato\"\nMAX_LOG_AGE_DAYS=7\nHEALTH_URL=\"http://${HOST}:8847/status\"\n\necho \"[HEAL] $(date) — Starting healing sequence for ${SERVICE_NAME}\"\n\n# --- Phase 1: Free disk space ---\necho \"[HEAL] Checking disk space...\"\nDISK_USAGE=$(ssh ${HOST} \"df / | tail -1 | awk '{print \\$5}' | tr -d '%'\")\nif [[ $DISK_USAGE -gt 90 ]]; then\n  echo \"[HEAL] Disk at ${DISK_USAGE}%. Cleaning logs...\"\n  ssh ${HOST} \"find ${LOG_DIR} -name '*.log' -mtime +${MAX_LOG_AGE_DAYS} -delete\"\n  ssh ${HOST} \"find ${LOG_DIR} -name '*.log' -size +1G -exec truncate -s 0 {} \\;\"\n  echo \"[HEAL] Log cleanup complete.\"\nelse\n  echo \"[HEAL] Disk at ${DISK_USAGE}%. No cleanup needed.\"\nfi\n\n# --- Phase 2: Restart service ---\necho \"[HEAL] Restarting ${SERVICE_NAME}...\"\nssh ${HOST} \"sudo systemctl restart ${SERVICE_NAME} || sudo docker restart plato-tile-server\"\nsleep 5\n\n# --- Phase 3: Verify ---\necho \"[HEAL] Running health checks...\"\nfor i in {1..6}; do\n  STATUS=$(curl -s -o /dev/null -w \"%{http_code}\" ${HEALTH_URL})\n  if [[ \"$STATUS\" == \"200\" ]]; then\n    echo \"[HEAL] ✓ Health check passed (HTTP 200)\"\n    break\n  fi\n  echo \"[HEAL] Attempt $i: HTTP $STATUS. Retrying in 10s...\"\n  sleep 10\ndone\n\nif [[ \"$STATUS\" != \"200\" ]]; then\n  echo \"[HEAL] ✗ Health check failed after 6 attempts. ESCALATING.\"\n  echo \"[HEAL] $(date) — ESCALATION: Manual intervention required.\"\n  exit 1\nfi\n\n# --- Phase 4: Log the healing event ---\necho \"[HEAL] $(date) — Healing complete. Service restored.\"\necho \"[HEAL] Root cause: Log rotation failure. debug.log consumed 47G.\"\necho \"[HEAL] Action taken: Cleaned logs, restarted service, verified health.\"\necho \"[HEAL] Prevention: See follow-up ticket for logrotate config fix.\""
+          },
+          {
+            "description": "Run and verify**",
+            "language": "bash",
+            "code": "chmod +x heal-tile-server.sh\n./heal-tile-server.sh 2>&1 | tee /tmp/heal-tile-server-$(date +%s).log\n\n# Verify tile ingestion resumes\ncurl -s http://147.224.38.131:8847/status | jq '.zc_stats.tiles_last_5min'\n# Should show >0 tiles"
+          },
+          {
+            "description": "Follow-up — prevent recurrence**",
+            "language": "bash",
+            "code": "# Write a follow-up ticket (bottle to Oracle1)\ncat > /root/.openclaw/workspace/data/bottles/oracle1/heal-followup-tile-server-2026-05-05.md <<'EOF'\n[I2I:HEALING] CCC 🦀 → Oracle1 🔮 — PLATO Tile Server Incident Follow-up\n\n**Incident:** Tile server down (502) from 02:14 to 02:47 UTC\n**Root cause:** Log rotation failure — /var/log/plato/debug.log grew to 47G\n**Impact:** ZC tile ingestion paused for 33 minutes. No data loss.\n**Healing action:** Cleaned logs, restarted service, verified health.\n\n**Prevention required:**\n1. Add logrotate config for /var/log/plato/*.log:\n   - Rotate daily\n   - Keep 7 days\n   - Compress rotated logs\n   - Restart service post-rotate if needed\n2. Add disk usage alert at 85% (currently no alerting)\n3. Consider log shipping to external store to reduce local disk pressure\n\n**Status:** RESOLVED — awaiting prevention measures\nEOF"
+          }
+        ],
+        "key_insight": "The healing script is idempotent. Run it twice — it checks disk first, skips cleanup if already done, restarts the service, verifies. No double-restart. No data corruption. Safe enough to cron.",
+        "time_taken": "8 minutes (diagnosis) + 2 minutes (healing script) + 5 minutes (follow-up) = 15 minutes",
+        "tokens_used": "~3,500"
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "Restarting blindly without diagnosis",
+          "code": "# WRONG — see 502, immediately restart\nssh 147.224.38.131 \"sudo systemctl restart plato-tile-server\"\n# Problem: If the failure is due to a bad config change, restarting just crashes again.\n# If the failure is disk full, restarting may corrupt data if the service tries to write.\n# If the failure is an external dependency (e.g., database down), restarting is useless.\n# Fix: Always diagnose before acting. Check logs, resources, recent changes.\nssh 147.224.38.131 \"tail -n 50 /var/log/plato/tile-server.log\"\nssh 147.224.38.131 \"df -h && free -h\"\n# Only restart when you know why it broke and that restart is safe.",
+          "problem": "If the failure is due to a bad config change, restarting just crashes again. # If the failure is disk full, restarting may corrupt data if the service tries to write. # If the failure is an external dependency (e.g., database down), restarting is useless.",
+          "fix": "Always diagnose before acting. Check logs, resources, recent changes. ssh 147.224.38.131 \"tail -n 50 /var/log/plato/tile-server.log\" ssh 147.224.38.131 \"df -h && free -h\" # Only restart when you know why it broke and that restart is safe. ```"
+        },
+        {
+          "id": "B",
+          "title": "Writing healing scripts that are not idempotent",
+          "code": "# WRONG — script restarts unconditionally\ncat > heal.sh <<'EOF'\n#!/bin/bash\nssh host \"sudo systemctl restart myservice\"  # Always restarts!\nEOF\n# Problem: If you run this every 5 minutes via cron, the service restarts\n# every 5 minutes even when healthy. Users get kicked, jobs interrupted.\n# Fix: Gate the restart behind a health check.\nif [[ $(curl -s -o /dev/null -w \"%{http_code}\" http://host:port/health) != \"200\" ]]; then\n  ssh host \"sudo systemctl restart myservice\"\nfi",
+          "problem": "If you run this every 5 minutes via cron, the service restarts # every 5 minutes even when healthy. Users get kicked, jobs interrupted.",
+          "fix": "Gate the restart behind a health check. if [[ $(curl -s -o /dev/null -w \"%{http_code}\" http://host:port/health) != \"200\" ]]; then   ssh host \"sudo systemctl restart myservice\" fi ```"
+        },
+        {
+          "id": "C",
+          "title": "Healing without verification — assuming it worked",
+          "code": "# WRONG — restart, then move on\nssh host \"sudo systemctl restart plato-tile-server\"\necho \"Done!\"\n# Problem: The service may start but fail 10 seconds later due to a missing dependency.\n# You think it's fixed. It's not. The next health check will fail.\n# Fix: Always verify with the same check that detected the failure.\nfor i in {1..6}; do\n  STATUS=$(curl -s -o /dev/null -w \"%{http_code}\" http://host:port/health)\n  [[ \"$STATUS\" == \"200\" ]] && break\n  sleep 10\ndone\n[[ \"$STATUS\" == \"200\" ]] || echo \"FAILED — escalate!\"",
+          "problem": "The service may start but fail 10 seconds later due to a missing dependency. # You think it's fixed. It's not. The next health check will fail.",
+          "fix": "Always verify with the same check that detected the failure. for i in {1..6}; do   STATUS=$(curl -s -o /dev/null -w \"%{http_code}\" http://host:port/health)   [[ \"$STATUS\" == \"200\" ]] && break   sleep 10 done [[ \"$STATUS\" == \"200\" ]] || echo \"FAILED — escalate!\" ```"
+        },
+        {
+          "id": "D",
+          "title": "Forgetting to log — no trace of what happened",
+          "code": "# WRONG — fixed it, didn't write it down\n# Problem: When it breaks again next week, nobody knows what fixed it last time.\n# Was it a restart? A config change? A disk cleanup? You'll diagnose from scratch.\n# Fix: Every healing action gets a log entry — timestamp, symptom, diagnosis, action, verification.\necho \"[$(date)] HEAL: symptom=502, diagnosis=disk-full, action=log-cleanup+restart, verify=HTTP200\" >> /var/log/healing.log",
+          "problem": "When it breaks again next week, nobody knows what fixed it last time. # Was it a restart? A config change? A disk cleanup? You'll diagnose from scratch.",
+          "fix": "Every healing action gets a log entry — timestamp, symptom, diagnosis, action, verification. echo \"[$(date)] HEAL: symptom=502, diagnosis=disk-full, action=log-cleanup+restart, verify=HTTP200\" >> /var/log/healing.log ```  ---"
+        }
+      ],
+      "exercise": {
+        "task": "Design and implement a self-healing loop for the fleet's critical services. The loop should detect failure, attempt healing, verify recovery, and log everything — without human intervention for recoverable failures.",
+        "scaffolding": {
+          "level_1": {
+            "support": "high support",
+            "description": "use the worked example as a template:",
+            "code_blocks": [
+              ""
+            ]
+          }
+        },
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "Implement health checks for at least 2 fleet services",
+          "Write a healing script that includes: detection, diagnosis, action, verification, logging",
+          "The script must be idempotent (safe to run multiple times)",
+          "Include escalation logic for failures that can't be auto-healed",
+          "Write a follow-up/prevention note for at least 1 healing scenario",
+          "All actions must be logged with timestamps and outcomes"
+        ],
+        "verification": "```bash\n# Automated checks\n[[ -f /tmp/fleet-healer.sh ]] && echo \"✓ Healing script exists\"\ngrep -q \"for i in\" /tmp/fleet-healer.sh && echo \"✓ Retry/verify loop present\"\ngrep -q \"ESCALATE\\|escalat\" /tmp/fleet-healer.sh && echo \"✓ Escalation logic present\"\ngrep -q \"\\[HEAL\\]\\|\\[ALERT\\]\\|\\[OK\\]\" /tmp/fleet-healer.sh && echo \"✓ Logging present\"\n[[ -f /root/.openclaw/workspace/data/bottles/oracle1/*.md ]] && echo \"✓ Follow-up bottle exists\" || echo \"⚠ Check bottle location\"\n# Idempotency — run twice, check no double-restart\ncat /tmp/fleet-healer.sh | grep -q \"curl.*200\" && echo \"✓ Idempotency gate present\"\n```",
+        "retry_allowed": true,
+        "max_retries": 3,
+        "on_pass": {}
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "Restarting a database service without checking for active transactions — data corruption",
+          "Healing scripts without `set -euo pipefail` — a failed command silently continues, script \"succeeds\" but nothing healed",
+          "No verification — the most common failure. Agent restarts, assumes OK, moves on. Service is still broken.",
+          "Logging to `/tmp/` — gets cleaned up. Log to a persistent path.",
+          "Not checking *why* before *what* — treating symptoms without understanding disease"
+        ],
+        "teaching_strategy": [
+          "Start with a service you control (a simple local HTTP server) — break it, heal it, verify",
+          "Move to a fleet service that's actually down (or simulate one)",
+          "Introduce the \"bad healing\" examples deliberately — let them crash a service with a bad script, then teach recovery",
+          "The prevention step is critical. An agent that heals but never prevents is just a faster way to stay busy."
+        ]
+      },
+      "metadata": {}
+    },
+    "012-repo-auditing": {
+      "id": "012-repo-auditing",
+      "title": "Repository Auditing — Fleet Inventory and Hygiene",
+      "level": "Captain",
+      "competency": "repo_audit",
+      "estimated_xp": 1400,
+      "time": "40-50 minutes",
+      "prerequisites": [
+        "005-ci-deployment",
+        "008-cross-linking",
+        "009-security-auditing"
+      ],
+      "learning_objectives": [
+        "Audit GitHub repositories systematically for structural, security, and maintenance issues",
+        "Detect exposed secrets, missing CI/CD, stale dependencies, and documentation gaps using automated and manual methods",
+        "Grade repositories on a standardized rubric (A-F) across multiple dimensions",
+        "Write audit reports that are scannable, actionable, and prioritized",
+        "Build a fleet-wide repo health dashboard that tracks trends over time"
+      ],
+      "worked_example": {
+        "scenario": "Casey wants a quarterly repo health report for the entire fleet. 20+ repos, but he only has 30 minutes. You need to audit, grade, and prioritize — fast.",
+        "expert": "ccc-auditor-captain, 2026-05-05",
+        "steps": [
+          {
+            "description": "Inventory — list all fleet repos**",
+            "language": "bash",
+            "code": "# Get all repos under the SuperInstance org\ncurl -s \"https://api.github.com/orgs/SuperInstance/repos?per_page=100\" | \\\n  jq -r '.[] | select(.archived == false) | \"\\(.name)\\t\\(.updated_at)\\t\\(.open_issues_count)\\t\\(.default_branch)\"' | \\\n  sort -t$'\\t' -k2 -r > /tmp/fleet-repos.tsv\n\n# Add manually tracked repos that might not be under the org\nFLEET_REPOS=(\n  \"SuperInstance/cocapn-plato\"\n  \"SuperInstance/flux-research\"\n  \"SuperInstance/oracle1-vessel\"\n  \"SuperInstance/JetsonClaw1-vessel\"\n  \"SuperInstance/crab-traps\"\n  \"SuperInstance/cocapn-docs\"\n  \"SuperInstance/fleet-index\"\n  \"SuperInstance/flux-c-tutor\"\n  \"SuperInstance/cocapn-flux\"\n  \"SuperInstance/purplepincher-web\"\n)"
+          }
+        ],
+        "key_insight": "",
+        "time_taken": "",
+        "tokens_used": ""
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "Auditing without a rubric — inconsistent grades",
+          "code": "# WRONG — different criteria per repo\n# Repo A: \"has README\" = PASS\n# Repo B: \"README is good\" = PASS (but it's 2 lines)\n# Repo C: \"no README\" = FAIL\n# Problem: Grades aren't comparable. You can't say \"Repo A is healthier than Repo B.\"\n# Fix: Define the rubric BEFORE auditing. Same criteria for every repo.\n# Use the dimension table: Security, CI/CD, Dependencies, Documentation, Structure, Activity.\n# Each dimension has PASS/WARN/FAIL criteria that are identical across all repos.",
+          "problem": "Grades aren't comparable. You can't say \"Repo A is healthier than Repo B.\"",
+          "fix": "Define the rubric BEFORE auditing. Same criteria for every repo. # Use the dimension table: Security, CI/CD, Dependencies, Documentation, Structure, Activity. # Each dimension has PASS/WARN/FAIL criteria that are identical across all repos. ```"
+        },
+        {
+          "id": "B",
+          "title": "Only checking HEAD, not recent history",
+          "code": "# WRONG — clone --depth 1, check current files, declare clean\ngit clone --depth 1 https://github.com/org/repo.git\n# Problem: The secret was committed last month and removed yesterday.\n# HEAD is clean. History is not. truffleHOG on --depth 1 misses it.\n# Fix: For security dimension, use full clone or truffleHOG remote scan.\ntruffleHOG --regex --json https://github.com/org/repo.git\n# For structure/docs dimensions, --depth 1 is fine.",
+          "problem": "The secret was committed last month and removed yesterday. # HEAD is clean. History is not. truffleHOG on --depth 1 misses it.",
+          "fix": "For security dimension, use full clone or truffleHOG remote scan. truffleHOG --regex --json https://github.com/org/repo.git # For structure/docs dimensions, --depth 1 is fine. ```"
+        },
+        {
+          "id": "C",
+          "title": "Missing the \"so what?\" — audit without prioritization",
+          "code": "# WRONG — flat list of issues, no priority\n- cocapn-plato: missing CHANGELOG\n- flux-research: no issue templates\n- crab-traps: old dependencies\n- oracle1-vessel: no CI\n# Problem: Everything is \"an issue.\" Owner doesn't know what to fix first.\n# A Captain's audit has teeth: grades, priorities, timelines.\n# Fix: Assign grades (A-F), then map grades to priorities:\n#   F = CRITICAL (fix this week)\n#   D = HIGH (fix this sprint)\n#   C = MEDIUM (next sprint)\n#   B = LOW (nice to have)\n#   A = maintain",
+          "problem": "Everything is \"an issue.\" Owner doesn't know what to fix first. # A Captain's audit has teeth: grades, priorities, timelines.",
+          "fix": "Assign grades (A-F), then map grades to priorities: #   F = CRITICAL (fix this week) #   D = HIGH (fix this sprint) #   C = MEDIUM (next sprint) #   B = LOW (nice to have) #   A = maintain ```"
+        },
+        {
+          "id": "D",
+          "title": "One-and-done auditing — no tracking over time",
+          "code": "# WRONG — run audit, deliver report, never do it again\n# Problem: You don't know if things are getting better or worse.\n# A repo that was \"A\" last quarter and is \"C\" this quarter is a warning.\n# A repo that was \"D\" and is now \"B\" is a win that should be celebrated.\n# Fix: Keep historical data. Compare quarter over quarter.\n# Store results in a persistent location:\ncp /tmp/fleet-audit-results.tsv /root/.openclaw/workspace/data/audit-history/2026-Q2.tsv\n# Next quarter: diff against 2026-Q1.tsv to see trends.",
+          "problem": "You don't know if things are getting better or worse. # A repo that was \"A\" last quarter and is \"C\" this quarter is a warning. # A repo that was \"D\" and is now \"B\" is a win that should be celebrated.",
+          "fix": "Keep historical data. Compare quarter over quarter. # Store results in a persistent location: cp /tmp/fleet-audit-results.tsv /root/.openclaw/workspace/data/audit-history/2026-Q2.tsv # Next quarter: diff against 2026-Q1.tsv to see trends. ```  ---"
+        }
+      ],
+      "exercise": {
+        "task": "Design and implement a complete repo health monitoring system for the fleet. It should audit all repos automatically, track grades over time, and alert when a repo degrades.",
+        "scaffolding": {
+          "level_1": {
+            "support": "high support",
+            "description": "extend the worked example:",
+            "code_blocks": [
+              ""
+            ]
+          }
+        },
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "Audit at least 5 fleet repos across all 6 dimensions (Security, CI/CD, Dependencies, Documentation, Structure, Activity)",
+          "Assign grades (A-F) using a consistent rubric",
+          "Identify at least 1 repo with a real issue (even if LOW priority)",
+          "Write a fleet-wide synthesis report with a scannable grade table",
+          "Prioritize findings (CRITICAL/HIGH/MEDIUM/LOW) with suggested timelines",
+          "Save audit results to a persistent location for historical tracking"
+        ],
+        "verification": "```bash\n# Automated checks\n[[ -f /tmp/fleet-repo-health-report.md ]] && echo \"✓ Fleet report exists\"\ngrep -q \"Grade\\|A\\|B\\|C\\|D\\|F\" /tmp/fleet-repo-health-report.md && echo \"✓ Grading present\"\ngrep -q \"CRITICAL\\|HIGH\\|MEDIUM\\|LOW\" /tmp/fleet-repo-health-report.md && echo \"✓ Prioritization present\"\n[[ $(grep -c \"|$\" /tmp/fleet-audit-results.tsv 2>/dev/null) -ge 5 ]] && echo \"✓ 5+ repos audited\"\n[[ -d /root/.openclaw/workspace/data/audit-history ]] && echo \"✓ History tracking enabled\" || echo \"⚠ No history dir — create one\"\ngrep -q \"Security\\|CI/CD\\|Dependencies\\|Documentation\\|Structure\\|Activity\" /tmp/fleet-repo-health-report.md && echo \"✓ All dimensions covered\"\n```",
+        "retry_allowed": true,
+        "max_retries": 2,
+        "on_pass": {}
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "Auditing 2 repos manually and calling it a fleet audit — a Captain audits systematically, not opportunistically",
+          "Grading subjectively — \"this one feels like a B\" — the rubric exists to remove subjectivity",
+          "Focusing only on security and ignoring documentation — a repo with no README is unusable, even if it's secure",
+          "Not tracking history — the most valuable insight is \"this repo was an A, now it's a D. What happened?\"",
+          "Reporting without owners — an audit with no assigned owner is a recommendation, not a mandate"
+        ],
+        "teaching_strategy": [
+          "Start with 3 repos the agent knows well — let them grade those first",
+          "Reveal the rubric only after they've guessed grades — calibrate their intuition",
+          "Add 2 repos they don't know — force them to use automated checks",
+          "The synthesis is the hardest part. Most agents list. Teach them to rank and compare."
+        ]
+      },
+      "metadata": {}
+    },
+    "013-fleet-command": {
+      "id": "013-fleet-command",
+      "title": "Fleet Command — Architecture and Strategy",
+      "level": "Admiral",
+      "competency": "fleet_orchestrate",
+      "estimated_xp": 2000,
+      "time": "45–60 minutes",
+      "prerequisites": [
+        "010-fleet-orchestration",
+        "011-service-healing",
+        "012-repo-auditing"
+      ],
+      "learning_objectives": [
+        "Design multi-agent operations that span the entire fleet",
+        "Allocate resources (compute, bandwidth, attention) across agents",
+        "Build curriculum and onboarding paths for new agents",
+        "Evaluate fleet-wide tradeoffs (speed vs safety, breadth vs depth)",
+        "Write strategic directives that other agents can execute autonomously"
+      ],
+      "worked_example": {
+        "scenario": "Casey suspects data leaks across the fleet. He needs a comprehensive audit of all 1,400+ repos without overwhelming any single agent.",
+        "expert": "ccc-admiral-1, 2026-05-05",
+        "steps": [
+          {
+            "description": "",
+            "language": "bash",
+            "code": "# Step 1: Scope the operation\ncurl -s https://api.github.com/orgs/SuperInstance/repos?per_page=100 | \\\n  jq -r '.[] | select(.pushed_at > \"2026-01-01\") | .name' > /tmp/active-repos.txt\n\nwc -l /tmp/active-repos.txt\n# Output: 1,247 active repos\n\n# Step 2: Divide into shards (no agent handles >50 repos)\nmkdir -p /tmp/shards\nsplit -l 50 /tmp/active-repos.txt /tmp/shards/shard-\nls /tmp/shards/ | wc -l\n# Output: 25 shards\n\n# Step 3: Design the audit directive\n cat > /tmp/audit-directive.json << 'EOF'\n{\n  \"operation\": \"fleet-security-audit-2026-05\",\n  \"priority\": \"P1\",\n  \"objective\": \"Find exposed credentials, missing .gitignore, stale dependencies\",\n  \"agent_pool\": 5,\n  \"shard_size\": 50,\n  \"timeout_per_shard\": \"30m\",\n  \"delivery\": \"bottle\",\n  \"recipient\": \"ccc\",\n  \"template\": {\n    \"checklist\": [\n      \"Scan for API keys, tokens, passwords\",\n      \"Verify .gitignore excludes .env, keys, build artifacts\",\n      \"Check dependency freshness (npm audit, pip-audit)\",\n      \"Look for hardcoded IPs/internal URLs\",\n      \"Check CI workflow security (no secrets in env)\"\n    ],\n    \"report_format\": \"bottle\",\n    \"escalation\": \"findings >= 1 P0 → immediate alert\"\n  }\n}\nEOF\n\n# Step 4: Spawn subagents with the directive\nfor shard in /tmp/shards/shard-*; do\n  echo \"Spawning subagent for $shard...\"\n  # Each subagent receives:\n  # - The directive\n  # - The repo list\n  # - A unique session key\n  # Results auto-announce when done\ndone\n\n# Step 5: Monitor and reallocate\n# If a subagent fails, redistribute its repos to healthy agents\n# If a subagent finds P0, pause operation and escalate immediately"
+          }
+        ],
+        "key_insight": "Fleet orchestration isn't about doing more work. It's about designing work that other agents can do without you. The directive is the product, not the result.",
+        "time_taken": "12 minutes",
+        "tokens_used": "~8,000"
+      },
+      "trials": [
+        {
+          "id": "A",
+          "title": "Monolithic operations",
+          "code": "# WRONG: One agent audits all 1,247 repos\n# Agent hits context limit at repo 73. 1,174 repos unaudited.\n\n# RIGHT: Shard into 50-repo chunks, spawn 25 parallel subagents\n# Each finishes in ~30 min. Total wall time: ~35 min (not 25×30 — they run in parallel)",
+          "problem": "",
+          "fix": ""
+        },
+        {
+          "id": "B",
+          "title": "No escalation rules",
+          "code": "# WRONG: \"Audit these repos and tell me what you find\"\n# Agent finds P0 data leak on repo #3, keeps auditing to repo #50\n# 47 repos wasted. Leak unpatched for hours.\n\n# RIGHT: \"If you find any P0 issue, STOP and alert immediately.\n# Do not continue auditing until P0 is acknowledged.\"",
+          "problem": "",
+          "fix": ""
+        },
+        {
+          "id": "C",
+          "title": "No resource limits",
+          "code": "# WRONG: Spawn 50 subagents simultaneously\n# Oracle1's server chokes. FM's laptop fans scream.\n# Fleet DoS'd by its own audit.\n\n# RIGHT: agent_pool: 5, timeout_per_shard: \"30m\"\n# Queue remaining shards. Agents pull work as they finish.",
+          "problem": "",
+          "fix": ""
+        },
+        {
+          "id": "D",
+          "title": "Vague directives",
+          "code": "# WRONG: \"Check these repos for issues\"\n# Agent checks README typos. Misses the exposed AWS key.\n\n# RIGHT: Explicit checklist with examples:\n# \"Scan for API keys (patterns: AKIA..., sk-..., ghp_...)\"\n# \"Verify .gitignore has: .env, *.pem, node_modules/\"",
+          "problem": "",
+          "fix": ""
+        }
+      ],
+      "exercise": {
+        "task": "The fleet just hired 20 new agents. Design an operation to onboard them to Sailor level in 2 weeks.",
+        "scaffolding": {
+          "level_1": {
+            "support": "high support",
+            "description": "operation template:",
+            "code_blocks": [
+              ""
+            ]
+          }
+        },
+        "auto_adjust": false
+      },
+      "assessment": {
+        "pass_criteria": [
+          "Design one fleet-wide operation with >3 agents and >10 repos/tasks",
+          "Include explicit sharding strategy",
+          "Include escalation rules with thresholds",
+          "Include resource limits (agent pool, timeouts)",
+          "Include success criteria and rollback plan"
+        ],
+        "verification": "```bash\n# Automated checks (manual review required for strategy)\n[[ -f /tmp/operation-directive.json ]] && echo \"✓ Directive exists\"\njq '.phases | length' /tmp/operation-directive.json  # Should be >= 2\njq '.agent_pool' /tmp/operation-directive.json       # Should be defined\njq '.escalation' /tmp/operation-directive.json       # Should be defined\n```",
+        "retry_allowed": false,
+        "max_retries": 0,
+        "on_pass": {}
+      },
+      "instructor_notes": {
+        "stumbling_blocks": [
+          "Designing operations that one agent could do alone (wastes fleet parallelism)",
+          "Forgetting escalation rules (P0 found at hour 3 of a 6-hour operation)",
+          "No resource limits (fleet DoS by well-intentioned audit)",
+          "Vague success criteria (\"make it better\" is not a criterion)"
+        ],
+        "teaching_strategy": [
+          "Start with Level 1 template — fill in the blanks",
+          "Make them size the agent pool: \"If you have 5 agents and 50 repos, how many shards?\"",
+          "Emphasize: \"The directive is your product. A good directive makes 20 agents useful. A bad directive makes 20 agents chaotic.\"",
+          "The \"aha\" moment: When they realize Admiral work is meta-work — designing systems, not doing tasks"
+        ]
+      },
+      "metadata": {}
+    }
+  },
+  "count": 13
+}
